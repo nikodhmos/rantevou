@@ -223,6 +223,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
   <section class="screen active" id="s-intro">
     <canvas class="bob sprite-xl" data-sprite="envelope" data-scale="8" style="height:110px"></canvas>
     <h1>Έχεις μια<br><span class="hl pink">πρόσκληση!</span></h1>
+    <p class="sub" id="fromLine" style="display:none">από: <b id="fromName"></b></p>
     <p class="sub">🔊 δυνάμωσε λίγο τον ήχο</p>
     <div class="btns">
       <button class="btn gold" id="open" type="button">ΑΝΟΙΞΕ ▶</button>
@@ -254,6 +255,9 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
     <h2>Πότε;</h2>
     <p class="sub"><b id="placeLabel"></b> · <a href="#" id="changePlace">αλλαγή</a></p>
     <form id="form" novalidate>
+      <label>Όνομα
+        <input id="name" maxlength="40" placeholder="πώς σε λένε;" autocomplete="given-name" enterkeyhint="next">
+      </label>
       <label>Μέρα
         <input type="date" id="date">
       </label>
@@ -285,7 +289,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 
 </main>
 
-<footer>φτιαγμένο με ♥</footer>
+<footer>φτιαγμένο με ♥ · <a href="link/" style="color:#ff7aa8">φτιάξε το δικό σου link</a></footer>
 
 <script>
 /* =========================================================
@@ -308,6 +312,24 @@ const CONFIG = {
     volume: 70,
   },
 };
+
+/* ---------- σε ποιον πάει η απάντηση (προσωπικά links από το link/) ---------- */
+// ?r=... = base64url JSON { f: όνομα, n: ntfy topic | e: email | p: κινητό + m: "s"(SMS)/"w"(WhatsApp) }
+const DEST = (() => {
+  try {
+    const k = new URLSearchParams(location.search).get("r");
+    if (!k) return {};
+    const b = k.replace(/-/g, "+").replace(/_/g, "/");
+    const o = JSON.parse(decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))))) || {};
+    return {
+      f: typeof o.f === "string" ? o.f.trim().slice(0, 30) : "",
+      n: typeof o.n === "string" && /^[A-Za-z0-9_-]{6,64}$/.test(o.n) ? o.n : "",
+      e: typeof o.e === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.e) ? o.e : "",
+      p: typeof o.p === "string" && /^\d{8,15}$/.test(o.p) ? o.p : "",
+      m: o.m === "w" ? "w" : "s",
+    };
+  } catch (e) { return {}; }
+})();
 
 /* ---------- pixel art ---------- */
 const PAL = {
@@ -633,6 +655,7 @@ function syncChips() {
 }
 ["input", "change"].forEach(ev => { dateIn.addEventListener(ev, syncChips); timeIn.addEventListener(ev, syncChips); });
 syncChips();
+$("name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("name").blur(); } });
 
 function niceDate(v) {
   const [Y, M, D] = v.split("-").map(Number);
@@ -651,6 +674,7 @@ function calLink(d) {
 }
 function textFor(d) {
   return `💕 ΝΑΙ στο ραντεβού!\n` +
+    `Όνομα: ${d.name}\n` +
     `Επιλογή: ${d.choice.emoji} ${d.choice.name}\n` +
     `Μέρα: ${niceDate(d.date)}\n` +
     `Ώρα: ${d.time}` +
@@ -662,9 +686,9 @@ async function notify(d) {
   const res = await fetch("https://ntfy.sh/", {
     method: "POST",
     body: JSON.stringify({
-      topic: CONFIG.ntfyTopic,
-      title: `💕 Ραντεβού: ${d.choice.emoji} ${d.choice.name} · ${niceDate(d.date)} ${d.time}`,
-      message: `Επιλογή: ${d.choice.emoji} ${d.choice.name}\nΜέρα: ${niceDate(d.date)}\nΏρα: ${d.time}` +
+      topic: DEST.n || CONFIG.ntfyTopic,
+      title: `💕 ${d.name} → ${d.choice.emoji} ${d.choice.name} · ${niceDate(d.date)} ${d.time}`,
+      message: `Όνομα: ${d.name}\nΕπιλογή: ${d.choice.emoji} ${d.choice.name}\nΜέρα: ${niceDate(d.date)}\nΏρα: ${d.time}` +
         (d.msg ? `\nΜήνυμα: ${d.msg}` : "") +
         `\nΠροσπάθειες να πατήσει το ΟΧΙ: ${state.noCount}`,
       tags: ["heart"], priority: 5,
@@ -674,15 +698,32 @@ async function notify(d) {
 }
 function smsLink(d) {
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  return `sms:${CONFIG.phone}${ios ? "&" : "?"}body=${encodeURIComponent(textFor(d))}`;
+  const t = encodeURIComponent(textFor(d));
+  if (DEST.p && DEST.m === "w") return `https://wa.me/${DEST.p}?text=${t}`;
+  return `sms:${DEST.p ? "+" + DEST.p : CONFIG.phone}${ios ? "&" : "?"}body=${t}`;
+}
+async function sendMail(d) {
+  const res = await fetch(`https://formsubmit.co/ajax/${DEST.e}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      _subject: `💕 ${d.name} → ${d.choice.emoji} ${d.choice.name} · ${niceDate(d.date)} ${d.time}`,
+      _template: "table", _captcha: "false",
+      "Όνομα": d.name, "Επιλογή": `${d.choice.emoji} ${d.choice.name}`, "Μέρα": niceDate(d.date), "Ώρα": d.time,
+      "Μήνυμα": d.msg || "-", "Προσπάθειες να πατήσει το ΟΧΙ": String(state.noCount),
+    }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || String(j.success) !== "true") throw new Error(j.message || "HTTP " + res.status);
 }
 
 $("form").addEventListener("submit", async e => {
   e.preventDefault();
   document.activeElement && document.activeElement.blur();
   const err = $("err"), send = $("send");
-  const d = { date: dateIn.value, time: timeIn.value, msg: $("msg").value.trim(), choice: state.choice };
+  const d = { name: $("name").value.trim(), date: dateIn.value, time: timeIn.value, msg: $("msg").value.trim(), choice: state.choice };
   const fail = m => { err.textContent = m; beep(150, .2); buzz([60, 40, 60]); };
+  if (!d.name) { fail("Γράψε το όνομά σου!"); return; }
   if (!d.date) { fail("Διάλεξε μέρα!"); return; }
   if (d.date < iso(today)) { fail("Στο παρελθόν δεν πάμε (ακόμα)"); return; }
   if (!d.time) { fail("Διάλεξε ώρα!"); return; }
@@ -690,22 +731,36 @@ $("form").addEventListener("submit", async e => {
 
   const mobile = /iP(hone|ad|od)|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   let note = "";
-  if (CONFIG.phone && mobile) location.href = smsLink(d);
-  send.disabled = true; send.textContent = "ΣΤΕΛΝΕΤΑΙ...";
-  try { await notify(d); note = "💌 το έμαθα ήδη!"; }
-  catch (ex) { note = "κάτι δεν πήγε καλά με την ειδοποίηση 😬 στείλε μου ένα μήνυμα!"; }
-  send.disabled = false; send.textContent = "ΚΛΕΙΣΤΗΚΕ 💌";
+  const usePhone = DEST.p || (!DEST.n && !DEST.e && CONFIG.phone);
+  if (usePhone) {
+    // έτοιμο SMS / WhatsApp (πρέπει να ανοίξει μέσα στο ίδιο πάτημα)
+    const url = smsLink(d);
+    if (DEST.p && DEST.m === "w") window.open(url, "_blank"); else if (mobile) location.href = url;
+    note = "📱 πάτα αποστολή στο μήνυμα για να το μάθω!";
+  } else {
+    send.disabled = true; send.textContent = "ΣΤΕΛΝΕΤΑΙ...";
+    try {
+      if (DEST.e) await sendMail(d); else await notify(d);
+      note = "💌 το έμαθα ήδη!";
+    }
+    catch (ex) { note = "κάτι δεν πήγε καλά με την ειδοποίηση 😬 στείλε μου ένα μήνυμα!"; }
+    send.disabled = false; send.textContent = "ΚΛΕΙΣΤΗΚΕ 💌";
+  }
 
   const sm = $("summary");
   sm.innerHTML = "";
-  [["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
+  [["💕 ", d.name], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
     if (i) sm.append(document.createElement("br"));
     const b = document.createElement("b"); b.textContent = val; sm.append(pre, b);
   });
   $("doneNote").textContent = note;
   $("cal").href = calLink(d);
   const sms = $("sms");
-  if (CONFIG.phone) { sms.href = smsLink(d); sms.classList.remove("hidden"); }
+  if (usePhone) {
+    sms.href = smsLink(d); sms.classList.remove("hidden");
+    sms.target = DEST.p && DEST.m === "w" ? "_blank" : "";
+    sms.textContent = DEST.p && DEST.m === "w" ? "💬 ΣΤΕΙΛΕ ΜΟΥ ΣΤΟ WHATSAPP" : "📱 ΣΤΕΙΛΕ ΜΟΥ SMS";
+  }
   show("s-done");
   jingle(); confetti(90); buzz([30, 50, 30, 50, 80]);
 });
@@ -729,6 +784,7 @@ function confetti(n) {
 }
 
 document.querySelectorAll("canvas[data-sprite]").forEach(paint);
+if (DEST.f) { $("fromName").textContent = DEST.f; $("fromLine").style.display = ""; }
 </script>
 </body>
 </html>
