@@ -680,7 +680,7 @@ function textFor(d) {
 }
 
 /* ---------- αποστολή μέσω του Worker (τα topics είναι κρυφά εκεί) ---------- */
-const API = "https://rantevou-api.nikodimos03.workers.dev";
+const API = "https://rantevou.nikodimos03.workers.dev";
 async function apiSend(payload) {
   const res = await fetch(API + "/send", {
     method: "POST",
