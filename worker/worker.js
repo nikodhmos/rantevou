@@ -1,10 +1,12 @@
-// v3.1
+// v4
 // Ραντεβού / Ρετσίνες: ενδιάμεσος server για τις ειδοποιήσεις ntfy.
 // Κρατάει κρυφά τα topics και ελέγχει ό,τι στέλνεται.
 //
 // Secrets (Settings → Variables and Secrets, τύπος "Secret"):
 //   NTFY_TOPIC  το topic σου για το απλό link του ραντεβού
 //   KEY         τυχαίο μυστικό για να κλειδώνονται τα topics των προσωπικών links
+//   RELAY_URL   https://<vercel-project>.vercel.app/api/ntfy
+//   RELAY_KEY   ίδιο με το RELAY_KEY στο Vercel
 // Binding (Settings → Bindings → KV namespace):
 //   LINKS       KV "rantevou-links": τα κοντά links (π.χ. ?nikos-k7p)
 
@@ -95,17 +97,23 @@ function checkWhen(date, time) {
 
 // Επιστρέφει null αν πήγε καλά, αλλιώς το λάθος του ntfy.
 // Προαιρετικό secret NTFY_TOKEN (tk_...) από δωρεάν λογαριασμό ntfy.sh, αν το ntfy κόβει τα αιτήματα.
+// Αν υπάρχουν RELAY_URL + RELAY_KEY, η ειδοποίηση περνάει από τον relay (Vercel),
+// γιατί το ntfy.sh δεν δέχεται συνδέσεις απευθείας από Cloudflare Workers (522).
 let ntfyEnv = {};
 async function ntfy(topic, title, message, tags) {
   const headers = { "Content-Type": "application/json" };
-  if (ntfyEnv.NTFY_TOKEN) headers.Authorization = "Bearer " + ntfyEnv.NTFY_TOKEN;
+  let url = "https://ntfy.sh/";
+  if (ntfyEnv.RELAY_URL && ntfyEnv.RELAY_KEY) { url = ntfyEnv.RELAY_URL; headers["x-relay-key"] = ntfyEnv.RELAY_KEY; }
+  else if (ntfyEnv.NTFY_TOKEN) headers.Authorization = "Bearer " + ntfyEnv.NTFY_TOKEN;
   try {
-    const r = await fetch("https://ntfy.sh/", {
+    const r = await fetch(url, {
       method: "POST", headers,
       body: JSON.stringify({ topic, title, message, tags, priority: 5 }),
     });
     if (r.ok) return null;
-    return `ntfy ${r.status}: ${(await r.text()).slice(0, 120)}`;
+    const t = await r.text();
+    try { const j = JSON.parse(t); if (j.error) return String(j.error).slice(0, 120); } catch (e) {}
+    return `ntfy ${r.status}: ${t.slice(0, 120)}`;
   } catch (e) { return "ntfy: " + String(e).slice(0, 120); }
 }
 
