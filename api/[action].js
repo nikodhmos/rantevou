@@ -152,7 +152,7 @@ module.exports = async (req, res) => {
         else if (mode === "email") {
           rec.e = clean(body.e, 100);
           if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rec.e)) return json({ ok: false, error: "Λάθος email" }, 400);
-        } else if (mode === "sms" || mode === "wa") {
+        } else if (false) {
           rec.p = clean(body.p, 15);
           if (!/^\d{10,15}$/.test(rec.p)) return json({ ok: false, error: "Λάθος κινητό" }, 400);
         } else return json({ ok: false, error: "bad mode" }, 400);

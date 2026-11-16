@@ -735,7 +735,7 @@ $("form").addEventListener("submit", async e => {
 
   const mobile = /iP(hone|ad|od)|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   let note = "";
-  const usePhone = DEST.p || (!DEST.t && !DEST.c && !DEST.e && CONFIG.phone);
+  const usePhone = !DEST.t && !DEST.c && !DEST.e && CONFIG.phone;
   if (usePhone) {
     // έτοιμο SMS / WhatsApp (πρέπει να ανοίξει μέσα στο ίδιο πάτημα)
     const url = smsLink(d);
