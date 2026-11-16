@@ -7,6 +7,12 @@
 <meta name="description" content="Θες να πάμε ραντεβού;">
 <meta property="og:title" content="Έχεις μια πρόσκληση 💌">
 <meta property="og:description" content="Πάτα να την ανοίξεις.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nikodhmos.github.io/rantevou/">
+<meta property="og:image" content="https://nikodhmos.github.io/rantevou/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0d0d26">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>">
@@ -690,7 +696,7 @@ async function apiSend(payload) {
   if (!res.ok || !j.ok) throw new Error(j.error || "HTTP " + res.status);
 }
 async function notify(d) {
-  await apiSend({ kind: "rantevou", r: DEST.t || undefined, name: d.name, date: d.date, time: d.time,
+  await apiSend({ kind: "rantevou", c: DEST.c || undefined, r: DEST.t || undefined, name: d.name, date: d.date, time: d.time,
     msg: d.msg, choice: d.choice.id, noCount: state.noCount });
 }
 function smsLink(d) {
@@ -716,6 +722,7 @@ async function sendMail(d) {
 
 $("form").addEventListener("submit", async e => {
   e.preventDefault();
+  await destReady;
   document.activeElement && document.activeElement.blur();
   const err = $("err"), send = $("send");
   const d = { name: $("name").value.trim(), date: dateIn.value, time: timeIn.value, msg: $("msg").value.trim(), choice: state.choice };
@@ -728,7 +735,7 @@ $("form").addEventListener("submit", async e => {
 
   const mobile = /iP(hone|ad|od)|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   let note = "";
-  const usePhone = DEST.p || (!DEST.t && !DEST.e && CONFIG.phone);
+  const usePhone = DEST.p || (!DEST.t && !DEST.c && !DEST.e && CONFIG.phone);
   if (usePhone) {
     // έτοιμο SMS / WhatsApp (πρέπει να ανοίξει μέσα στο ίδιο πάτημα)
     const url = smsLink(d);
@@ -781,7 +788,22 @@ function confetti(n) {
 }
 
 document.querySelectorAll("canvas[data-sprite]").forEach(paint);
-if (DEST.f) { $("fromName").textContent = DEST.f; $("fromLine").style.display = ""; }
+
+/* ---------- κοντά links (?nikos-k7p) ---------- */
+const CODE = (() => { const q = location.search.slice(1).split("&")[0]; return /^[a-z0-9]{1,12}-[a-z0-9]{3}$/.test(q) ? q : ""; })();
+function showFrom() { if (DEST.f) { $("fromName").textContent = DEST.f; $("fromLine").style.display = ""; } }
+const destReady = !CODE ? Promise.resolve() :
+  fetch(API + "/resolve", { method: "POST", body: JSON.stringify({ c: CODE }) })
+    .then(r => r.json()).then(j => {
+      if (!j.ok || j.site !== "rantevou") return;
+      DEST.f = j.f;
+      if (j.mode === "ntfy") DEST.c = CODE;
+      else if (j.mode === "email") { DEST.e = j.e; }
+      else if (j.p) { DEST.p = j.p; DEST.m = j.mode === "wa" ? "w" : "s"; }
+      showFrom();
+    }).catch(() => {});
+showFrom();
+
 </script>
 </body>
 </html>
