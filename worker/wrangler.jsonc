@@ -1,0 +1,12 @@
+// Ρυθμίσεις του Cloudflare Worker "rantevou".
+// Τα secrets (NTFY_TOPIC, KEY, NTFY_TOKEN) μένουν στο Cloudflare dashboard, όχι εδώ.
+{
+  "name": "rantevou",
+  "main": "worker.js",
+  "compatibility_date": "2025-01-01",
+  "workers_dev": true,
+  "keep_vars": true,
+  "kv_namespaces": [
+    { "binding": "LINKS", "id": "6720703a020f4011af5c5b8820eb0d35" }
+  ]
+}
