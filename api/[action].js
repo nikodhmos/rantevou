@@ -84,8 +84,16 @@ function checkWhen(date, time) {
 
 
 /* ---------- αποθήκη κοντών links (Upstash Redis REST) ---------- */
-const RURL = () => process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const RTOK = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Ψάχνει τις μεταβλητές του Upstash με όποιο prefix κι αν έχουν μπει (KV_, STORAGE_, UPSTASH_ ...)
+const findEnv = (...ends) => {
+  for (const end of ends) {
+    const k = Object.keys(process.env).find(k => k === end || k.endsWith("_" + end));
+    if (k && process.env[k]) return process.env[k];
+  }
+  return "";
+};
+const RURL = () => findEnv("KV_REST_API_URL", "REDIS_REST_URL", "REST_API_URL");
+const RTOK = () => findEnv("KV_REST_API_TOKEN", "REDIS_REST_TOKEN", "REST_API_TOKEN");
 async function kvGet(k) {
   const r = await fetch(`${RURL()}/get/${encodeURIComponent(k)}`, { headers: { Authorization: `Bearer ${RTOK()}` } });
   const j = await r.json(); return j.result ?? null;
