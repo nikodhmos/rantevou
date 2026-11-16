@@ -296,9 +296,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
    ΡΥΘΜΙΣΕΙΣ
    ========================================================= */
 const CONFIG = {
-  // Ειδοποίηση στο κινητό μέσω ntfy.sh (δωρεάν, χωρίς λογαριασμό).
-  // Κατέβασε το app «ntfy» και κάνε Subscribe σε αυτό το topic:
-  ntfyTopic: "rantevou-9f2b4e9e7d",
+  // Οι ειδοποιήσεις ntfy στέλνονται μέσω του Worker (rantevou-api), το topic είναι κρυφό εκεί.
   // Προαιρετικό: κινητό για έτοιμο SMS στο τέλος (κενό = μόνο ειδοποίηση ntfy)
   phone: "",
   options: [
@@ -323,7 +321,7 @@ const DEST = (() => {
     const o = JSON.parse(decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))))) || {};
     return {
       f: typeof o.f === "string" ? o.f.trim().slice(0, 30) : "",
-      n: typeof o.n === "string" && /^[A-Za-z0-9_-]{6,64}$/.test(o.n) ? o.n : "",
+      t: typeof o.t === "string" && /^[A-Za-z0-9_-]{20,200}$/.test(o.t) ? o.t : "",
       e: typeof o.e === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.e) ? o.e : "",
       p: typeof o.p === "string" && /^\d{8,15}$/.test(o.p) ? o.p : "",
       m: o.m === "w" ? "w" : "s",
@@ -681,20 +679,19 @@ function textFor(d) {
     (d.msg ? `\nΜήνυμα: ${d.msg}` : "");
 }
 
-/* ---------- ειδοποίηση στο κινητό (ntfy.sh) ---------- */
-async function notify(d) {
-  const res = await fetch("https://ntfy.sh/", {
+/* ---------- αποστολή μέσω του Worker (τα topics είναι κρυφά εκεί) ---------- */
+const API = "https://rantevou-api.nikodimos03.workers.dev";
+async function apiSend(payload) {
+  const res = await fetch(API + "/send", {
     method: "POST",
-    body: JSON.stringify({
-      topic: DEST.n || CONFIG.ntfyTopic,
-      title: `💕 ${d.name} → ${d.choice.emoji} ${d.choice.name} · ${niceDate(d.date)} ${d.time}`,
-      message: `Όνομα: ${d.name}\nΕπιλογή: ${d.choice.emoji} ${d.choice.name}\nΜέρα: ${niceDate(d.date)}\nΏρα: ${d.time}` +
-        (d.msg ? `\nΜήνυμα: ${d.msg}` : "") +
-        `\nΠροσπάθειες να πατήσει το ΟΧΙ: ${state.noCount}`,
-      tags: ["heart"], priority: 5,
-    }),
+    body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.ok) throw new Error(j.error || "HTTP " + res.status);
+}
+async function notify(d) {
+  await apiSend({ kind: "rantevou", r: DEST.t || undefined, name: d.name, date: d.date, time: d.time,
+    msg: d.msg, choice: d.choice.id, noCount: state.noCount });
 }
 function smsLink(d) {
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -731,7 +728,7 @@ $("form").addEventListener("submit", async e => {
 
   const mobile = /iP(hone|ad|od)|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   let note = "";
-  const usePhone = DEST.p || (!DEST.n && !DEST.e && CONFIG.phone);
+  const usePhone = DEST.p || (!DEST.t && !DEST.e && CONFIG.phone);
   if (usePhone) {
     // έτοιμο SMS / WhatsApp (πρέπει να ανοίξει μέσα στο ίδιο πάτημα)
     const url = smsLink(d);
@@ -743,7 +740,7 @@ $("form").addEventListener("submit", async e => {
       if (DEST.e) await sendMail(d); else await notify(d);
       note = "💌 το έμαθα ήδη!";
     }
-    catch (ex) { note = "κάτι δεν πήγε καλά με την ειδοποίηση 😬 στείλε μου ένα μήνυμα!"; }
+    catch (ex) { note = `δεν στάλθηκε 😬 ${String(ex.message || "").slice(0, 80)}`; }
     send.disabled = false; send.textContent = "ΚΛΕΙΣΤΗΚΕ 💌";
   }
 
