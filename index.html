@@ -230,6 +230,14 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 #timeChips,#minChips{justify-content:center}
 .chip:disabled{opacity:.35; cursor:not-allowed}
 .err.soft{color:#7a6a8a; min-height:0}
+.dsel{display:flex; justify-content:center; margin:12px 4px 0}
+.dsel select{font-family:inherit; font-size:20px; color:var(--ink); background:#f3e6c4; border:0; border-radius:0;
+  padding:10px 14px; width:100%; -webkit-appearance:none; appearance:none; cursor:pointer;
+  box-shadow:0 -3px 0 var(--ink), 0 3px 0 var(--ink), -3px 0 0 var(--ink), 3px 0 0 var(--ink), inset -3px -3px 0 #d9c99e}
+.dsel select.on{background:var(--gold)}
+.confirm{margin-top:6px; text-align:center}
+.confirm .cq{font-size:24px; margin:10px 0 0}
+#changeMind{color:var(--pink2)}
 .tsel{display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 4px}
 .tsel select{font-family:'Press Start 2P',monospace; font-size:26px; color:var(--ink); background:#fff;
   border:0; border-radius:0; padding:14px 10px; min-width:110px; text-align:center; text-align-last:center;
@@ -284,10 +292,10 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
     <h2>Πότε;</h2>
     <p class="sub"><b id="placeLabel"></b> · <a href="#" id="changePlace">αλλαγή</a></p>
     <form id="form" novalidate>
-      <label>Μέρα
-        <input type="date" id="date">
-      </label>
+      <label>Μέρα</label>
       <div class="chips" id="dateChips"></div>
+      <div class="dsel"><select id="dSel" aria-label="Άλλη μέρα"></select></div>
+      <input type="hidden" id="date" value="">
       <label>Ώρα <small>(πάτα πάνω για άλλη ώρα)</small></label>
       <div class="tsel">
         <select id="hSel" aria-label="Ώρα"></select>
@@ -309,6 +317,15 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
       <button class="btn wide yes" type="submit" id="send">ΚΛΕΙΣΤΗΚΕ 💌</button>
       <p class="err" id="err"></p>
     </form>
+    <div class="confirm hidden" id="confirm">
+      <p class="ok">Άρα...</p>
+      <div class="summary" id="confirmSum"></div>
+      <p class="cq">σωστά;</p>
+      <div class="btns">
+        <button class="btn yes" type="button" id="confirmYes">ΝΑΙ, ΣΤΕΙΛ' ΤΟ 💌</button>
+        <button class="btn ghost small" type="button" id="confirmNo">✏️ ΑΛΛΑΓΗ</button>
+      </div>
+    </div>
   </section>
 
   <!-- 4. Τέλος -->
@@ -322,6 +339,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
       <a class="btn blue small" id="cal" target="_blank" rel="noopener">📅 ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ</a>
       <a class="btn yes small hidden" id="sms">📱 ΣΤΕΙΛΕ ΜΟΥ SMS</a>
     </div>
+    <p class="note"><a href="#" id="changeMind">↺ άλλαξα γνώμη</a></p>
   </section>
 
 </main>
@@ -684,6 +702,17 @@ function makeChips(el, items, input) {
   });
 }
 makeChips($("dateChips"), dateOpts.map(([l, off]) => { const d = new Date(today); d.setDate(d.getDate() + off); return [l, iso(d)]; }), dateIn);
+// «άλλη μέρα»: λίστα με τις επόμενες 60 μέρες γραμμένες με λέξεις
+$("dSel").add(new Option("📅 άλλη μέρα…", ""));
+for (let i = 0; i < 60; i++) {
+  const d = new Date(today); d.setDate(d.getDate() + i);
+  const label = d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+  $("dSel").add(new Option(i === 0 ? `Σήμερα, ${label}` : i === 1 ? `Αύριο, ${label}` : label, iso(d)));
+}
+$("dSel").addEventListener("change", () => {
+  if (!$("dSel").value) return;
+  dateIn.value = $("dSel").value; setTime(toMin(timeIn.value)); beep(1200, .04); buzz(10);
+});
 /* ώρα: γρήγορα κουμπιά ανάλογα με την επιλογή, ή πατάς πάνω στην ώρα για όποια θες.
    Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
 const toMin = v => { const [h, m] = v.split(":").map(Number); return h * 60 + m; };
@@ -717,6 +746,11 @@ $("hSel").addEventListener("change", fromSel);
 $("mSel").addEventListener("change", fromSel);
 function syncChips() {
   document.querySelectorAll("#dateChips .chip").forEach(c => c.classList.toggle("on", c.dataset.v === dateIn.value));
+  if ($("dSel")) {
+    const chipDate = [...document.querySelectorAll("#dateChips .chip")].some(c => c.dataset.v === dateIn.value);
+    $("dSel").value = dateIn.value && !chipDate ? dateIn.value : "";
+    $("dSel").classList.toggle("on", !!dateIn.value && !chipDate);
+  }
   const lo = minAllowed();
   const [sh, sm] = timeIn.value.split(":").map(Number);
   $("hSel").value = sh; $("mSel").value = sm - (sm % 5);
@@ -749,7 +783,7 @@ function calLink(d) {
   return "https://calendar.google.com/calendar/render?" + q;
 }
 function textFor(d) {
-  return `💕 ΝΑΙ στο ραντεβού!\n` +
+  return (d.change ? `🔁 ΑΛΛΑΓΗ στο ραντεβού!\n` : `💕 ΝΑΙ στο ραντεβού!\n`) +
     `Όνομα: ${d.name}\n` +
     `Από: ${d.from}\n` +
     `Επιλογή: ${d.choice.emoji} ${d.choice.name}\n` +
@@ -770,7 +804,7 @@ async function apiSend(payload) {
 }
 async function notify(d) {
   await apiSend({ kind: "rantevou", c: DEST.c || undefined, r: DEST.t || undefined, name: d.name, from: d.from, date: d.date, time: d.time,
-    msg: d.msg, choice: d.choice.id, noCount: state.noCount });
+    msg: d.msg, choice: d.choice.id, noCount: state.noCount, change: !!d.change });
 }
 function smsLink(d) {
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -807,6 +841,34 @@ $("form").addEventListener("submit", async e => {
   if (d.date < iso(today)) { fail("Στο παρελθόν δεν πάμε (ακόμα)"); return; }
   if (!d.time) { fail("Διάλεξε ώρα!"); return; }
   err.textContent = "";
+  pending = d;
+  fillSummary($("confirmSum"), d);
+  $("form").classList.add("hidden"); $("confirm").classList.remove("hidden");
+  $("confirm").scrollIntoView({ behavior: "smooth", block: "center" });
+  beep(880, .06); buzz(15);
+});
+
+let pending = null, sentOnce = false;
+function fillSummary(sm, d) {
+  sm.innerHTML = "";
+  [["💕 ", d.name], ["📍 ", d.from], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
+    if (i) sm.append(document.createElement("br"));
+    const b = document.createElement("b"); b.textContent = val; sm.append(pre, b);
+  });
+}
+$("confirmNo").onclick = () => {
+  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); beep(400, .06);
+};
+$("changeMind").onclick = e => {
+  e.preventDefault();
+  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden");
+  $("send").textContent = "ΣΤΕΙΛΕ ΤΗΝ ΑΛΛΑΓΗ 💌";
+  show("s-when");
+};
+$("confirmYes").onclick = async () => {
+  const d = pending; if (!d) return;
+  d.change = sentOnce;
+  const send = $("confirmYes");
 
   const mobile = /iP(hone|ad|od)|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   let note = "";
@@ -823,15 +885,12 @@ $("form").addEventListener("submit", async e => {
       note = "💌 το έμαθα ήδη!";
     }
     catch (ex) { note = `δεν στάλθηκε 😬 ${String(ex.message || "").slice(0, 80)}`; }
-    send.disabled = false; send.textContent = "ΚΛΕΙΣΤΗΚΕ 💌";
+    send.disabled = false; send.textContent = "ΝΑΙ, ΣΤΕΙΛ' ΤΟ 💌";
   }
 
-  const sm = $("summary");
-  sm.innerHTML = "";
-  [["💕 ", d.name], ["📍 ", d.from], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
-    if (i) sm.append(document.createElement("br"));
-    const b = document.createElement("b"); b.textContent = val; sm.append(pre, b);
-  });
+  fillSummary($("summary"), d);
+  if (!/δεν στάλθηκε/.test(note)) sentOnce = true;
+  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden");
   $("doneNote").textContent = note;
   $("cal").href = calLink(d);
   const sms = $("sms");
@@ -842,7 +901,7 @@ $("form").addEventListener("submit", async e => {
   }
   show("s-done");
   jingle(); confetti(90); buzz([30, 50, 30, 50, 80]);
-});
+};
 
 /* ---------- κομφετί ---------- */
 function confetti(n) {

@@ -211,7 +211,7 @@ module.exports = async (req, res) => {
       if (body.kind === "rantevou") {
         const choice = RANTEVOU[body.choice];
         if (!choice) return json({ ok: false, error: "Λάθος επιλογή" }, 400);
-        title = `💕 ${name}${from ? ` (${from})` : ""} → ${choice} · ${niceDate(date)} ${time}`;
+        title = `${body.change === true ? "🔁 ΑΛΛΑΓΗ · " : "💕 "}${name}${from ? ` (${from})` : ""} → ${choice} · ${niceDate(date)} ${time}`;
         lines = [`Όνομα: ${name}`];
         if (from) lines.push(`Από: ${from}`);
         lines.push(`Επιλογή: ${choice}`);
