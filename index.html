@@ -233,6 +233,8 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 #sp:not(.show){opacity:0; pointer-events:none; transform:translateY(-200vh)}
 #sp .sp-tip{font-family:'Press Start 2P',monospace; font-size:9px; line-height:1.6; color:#fff; text-align:center; margin:0 26px 8px}
 #sp iframe{width:100%; height:152px; border:0; display:block; border-radius:12px; background:#282828}
+#sp .sp-row{display:flex; gap:8px; margin-top:8px}
+#sp .sp-b{flex:1; font-family:'Press Start 2P',monospace; font-size:8px; line-height:1.4; padding:9px 4px; border:none; background:#3b3355; color:#fff; text-align:center; text-decoration:none; box-shadow:0 0 0 2px var(--gold); cursor:pointer}
 #sp .sp-x{position:absolute; top:-14px; right:-14px; width:30px; height:30px; border:none; background:var(--red); color:#fff;
   font-family:'Press Start 2P',monospace; font-size:12px; box-shadow:0 0 0 3px var(--ink); cursor:pointer}
 #music.nudge{animation:nudge .5s steps(2) infinite; --c:var(--gold2)}
@@ -300,7 +302,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 <canvas id="moon" data-sprite="moon" data-scale="6"></canvas>
 <div class="sea"></div>
 <button class="btn ghost small" id="music" type="button" aria-label="Μουσική"><span class="eq"><i></i><i></i><i></i></span><span id="musicLabel">♫</span></button>
-<div id="sp" role="dialog" aria-label="Careless Whisper"><button class="sp-x" id="spX" type="button" aria-label="Κλείσε">×</button><p class="sp-tip">πάτα ▶ 🎷</p><div id="spSlot"></div></div>
+<div id="sp" role="dialog" aria-label="Careless Whisper"><button class="sp-x" id="spX" type="button" aria-label="Κλείσε">×</button><p class="sp-tip">πάτα ▶ 🎷</p><div id="spSlot"></div><div class="sp-row"><button class="sp-b" id="spRe" type="button">↻ ΞΑΝΑ</button><a class="sp-b" id="spApp" target="_blank" rel="noopener">ΣΤΟ SPOTIFY ↗</a></div></div>
 
 <main class="box">
 
@@ -574,10 +576,14 @@ const unlockAudio = () => {}, beep = () => {}, jingle = () => {};
 /* ---------- μουσική: επίσημος Spotify player (χωρίς διαφημίσεις YouTube) ---------- */
 const musicBtn = $("music"), sp = $("sp");
 let spLoaded = false;
+const spSrc = () => "https://open.spotify.com/embed/track/" + CONFIG.music.spotify + "?theme=0&t=" + Date.now();
+$("spApp").href = "https://open.spotify.com/track/" + CONFIG.music.spotify;
+// αν το Spotify αργήσει («upstream request timeout»), ξαναφορτώνει τον player
+$("spRe").onclick = () => { buzz(10); const f = $("spFrame"); if (f) f.src = spSrc(); else loadSpotify(); };
 function loadSpotify() {
   if (spLoaded) return; spLoaded = true;
   const f = document.createElement("iframe");
-  f.src = "https://open.spotify.com/embed/track/" + CONFIG.music.spotify + "?utm_source=generator&theme=0";
+  f.id = "spFrame"; f.src = spSrc();
   f.title = "Careless Whisper — Spotify";
   f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
   $("spSlot").appendChild(f);
