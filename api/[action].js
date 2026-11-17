@@ -8,11 +8,11 @@ const RANTEVOU = { food: "🍝 ΦΑΓΗΤΟ", meze: "🫒 ΜΕΖΕΔΕΣ", drink
 const RANTEVOU_HOURS = { food: ["12:30", "23:30"], meze: ["12:30", "23:30"], drink: ["20:00", "01:00"] };
 // ώρες πριν τις 06:00 = μετά τα μεσάνυχτα της ίδιας βραδιάς
 const lateMin = v => { const [h, m] = v.split(":").map(Number); return (h < 6 ? h + 24 : h) * 60 + m; };
-const DRINKS = {
-  krasi:    { label: "🍷 Κρασί",    places: ["bit", "rotonda"] },
-  mpyra:    { label: "🍺 Μπύρα",    places: ["lefkos", "magkazi"] },
-  volta:    { label: "🚶 Βόλτα",    places: ["paralia", "ompreles", "kastra", "aristotelous"] },
-  retsines: { label: "🍾 Ρετσίνες", places: ["bit", "rotonda"] },
+const DRINKS = {   // hours = λογικές ώρες (ίδιες με τη σελίδα)
+  krasi:    { label: "🍷 Κρασί",    places: ["bit", "rotonda"], hours: ["19:00", "01:00"] },
+  mpyra:    { label: "🍺 Μπύρα",    places: ["lefkos", "magkazi"], hours: ["19:00", "01:00"] },
+  volta:    { label: "🚶 Βόλτα",    places: ["paralia", "ompreles", "kastra", "aristotelous"], hours: ["10:00", "23:30"] },
+  retsines: { label: "🍾 Ρετσίνες", places: ["bit", "rotonda"], hours: ["13:00", "01:00"] },
 };
 const PLACES = {
   bit: "Bit", rotonda: "Ροτόντα", lefkos: "Λευκός", magkazi: "Μαγαζί",
@@ -210,7 +210,8 @@ module.exports = async (req, res) => {
       const date = clean(body.date, 10), time = clean(body.time, 5);
       const tries = Math.max(0, Math.min(999, parseInt(body.noCount, 10) || 0));
       if (!name) return json({ ok: false, error: "Γράψε όνομα" }, 400);
-      const bad = checkWhen(date, time, body.kind === "rantevou" && body.choice === "drink");
+      const late = (body.kind === "rantevou" && body.choice === "drink") || (body.kind === "retsines" && !!DRINKS[body.drink] && DRINKS[body.drink].hours[1] < "06:00");
+      const bad = checkWhen(date, time, late);
       if (bad) return json({ ok: false, error: bad }, 400);
 
       let title, lines, tl = time;
@@ -227,8 +228,13 @@ module.exports = async (req, res) => {
       } else if (body.kind === "retsines") {
         const dr = DRINKS[body.drink];
         if (!dr || !dr.places.includes(body.place)) return json({ ok: false, error: "Λάθος επιλογή" }, 400);
-        title = `${dr.label.split(" ")[0]} ${name} → ${dr.label.split(" ")[1]} · ${PLACES[body.place]}, ${niceDate(date)} ${time}`;
-        lines = [`Όνομα: ${name}`, `Τι: ${dr.label}`, `Μέρος: ${PLACES[body.place]}`];
+        const [hFrom, hTo] = dr.hours;
+        if (lateMin(time) < lateMin(hFrom) || lateMin(time) > lateMin(hTo)) return json({ ok: false, error: `Διάλεξε ώρα ${hFrom}–${hTo}` }, 400);
+        tl = lateMin(time) >= 1440 ? `${time} (μετά τα μεσάνυχτα)` : time;
+        title = `${body.change === true ? "🔁 ΑΛΛΑΓΗ · " : ""}${dr.label.split(" ")[0]} ${name}${from ? ` (${from})` : ""} → ${dr.label.split(" ")[1]} · ${PLACES[body.place]}, ${niceDate(date)} ${tl}`;
+        lines = [`Όνομα: ${name}`];
+        if (from) lines.push(`Από: ${from}`);
+        lines.push(`Τι: ${dr.label}`, `Μέρος: ${PLACES[body.place]}`);
       } else {
         return json({ ok: false, error: "bad kind" }, 400);
       }

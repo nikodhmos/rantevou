@@ -786,7 +786,7 @@ function makeChips(el, items, input) {
   items.forEach(([label, value]) => {
     const c = document.createElement("button");
     c.type = "button"; c.className = "chip"; c.textContent = label; c.dataset.v = value;
-    c.onclick = () => { input.value = value; setTime(toMin(timeIn.value)); beep(1200, .04); buzz(10); };
+    c.onclick = () => { input.value = value; setTime(wantT ?? toMin(timeIn.value)); beep(1200, .04); buzz(10); };
     el.appendChild(c);
   });
 }
@@ -800,7 +800,7 @@ for (let i = 0; i < 60; i++) {
 }
 $("dSel").addEventListener("change", () => {
   if (!$("dSel").value) return;
-  dateIn.value = $("dSel").value; setTime(toMin(timeIn.value)); beep(1200, .04); buzz(10);
+  dateIn.value = $("dSel").value; setTime(wantT ?? toMin(timeIn.value)); beep(1200, .04); buzz(10);
 });
 /* ώρα: γρήγορα κουμπιά ανάλογα με την επιλογή, ή πατάς πάνω στην ώρα για όποια θες.
    Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
@@ -821,7 +821,9 @@ function minAllowed() {
   }
   return lo;
 }
+let wantT = null;   // η ώρα που ζήτησε (για να μη χάνεται όταν αλλάζει μέρα)
 function setTime(t) {
+  wantT = t;
   const lo = minAllowed();
   timeIn.value = fromMin(Math.min(optTo(), Math.max(lo, t)));
   syncChips();
@@ -860,7 +862,7 @@ function syncChips() {
   });
   $("timeNote").textContent = lo > optTo() ? "Για σήμερα είναι αργά, διάλεξε άλλη μέρα 🙂" : lo > optFrom() ? `Για σήμερα: από ${fromMin(lo)} και μετά` : "";
 }
-["input", "change"].forEach(ev => dateIn.addEventListener(ev, () => setTime(toMin(timeIn.value))));
+["input", "change"].forEach(ev => dateIn.addEventListener(ev, () => setTime(wantT ?? toMin(timeIn.value))));
 syncChips();
 $("name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("from").focus(); } });
 $("from").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("from").blur(); } });
