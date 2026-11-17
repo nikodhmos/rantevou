@@ -423,9 +423,9 @@ const CONFIG = {
   // Προαιρετικό: κινητό για έτοιμο SMS στο τέλος (κενό = μόνο ειδοποίηση ntfy)
   phone: "",
   options: [
-    { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", hint: "π.χ. θέλω λαδόκολλα 🥙", times: ["13:00", "14:00", "15:00"], def: "14:00", from: "12:00", to: "23:55" },
-    { id: "meze",  name: "ΜΕΖΕΔΕΣ", emoji: "🫒", sprite: "meze",   sub: "κάτι χαλαρό", hint: "π.χ. τσιπουράκι με χταποδάκι 🐙", times: ["13:00", "14:00", "15:00"], def: "14:00", from: "12:00", to: "23:55" },
-    { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", hint: "π.χ. ένα κοκτέιλ με θέα 🍹", times: ["21:00", "22:00", "23:00"], def: "21:00", from: "19:00", to: "23:55" },
+    { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", hint: "π.χ. θέλω λαδόκολλα 🥙", times: ["14:00", "15:00", "21:00"], def: "14:00", from: "12:30", to: "23:30" },
+    { id: "meze",  name: "ΜΕΖΕΔΕΣ", emoji: "🫒", sprite: "meze",   sub: "κάτι χαλαρό", hint: "π.χ. τσιπουράκι με χταποδάκι 🐙", times: ["13:00", "14:00", "15:00"], def: "14:00", from: "12:30", to: "23:30" },
+    { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", hint: "π.χ. ένα κοκτέιλ με θέα 🍹", times: ["21:00", "22:00", "23:00"], def: "21:00", from: "20:00", to: "01:00" },
   ],
   music: { youtube: "izGwDsrQ1eQ" },   // Careless Whisper — επίσημο βίντεο στο YouTube
 };
@@ -804,8 +804,11 @@ $("dSel").addEventListener("change", () => {
 });
 /* ώρα: γρήγορα κουμπιά ανάλογα με την επιλογή, ή πατάς πάνω στην ώρα για όποια θες.
    Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
-const toMin = v => { const [h, m] = v.split(":").map(Number); return h * 60 + m; };
-const fromMin = t => `${p2(Math.floor(t / 60))}:${p2(t % 60)}`;
+// ώρες πριν τις 06:00 = μετά τα μεσάνυχτα της ίδιας βραδιάς (π.χ. ποτό 00:30)
+const toMin = v => { const [h, m] = v.split(":").map(Number); return (h < 6 ? h + 24 : h) * 60 + m; };
+const fromMin = t => `${p2(Math.floor(t / 60) % 24)}:${p2(t % 60)}`;
+const afterMidnight = v => toMin(v) >= 24 * 60;
+const timeLabel = v => afterMidnight(v) ? `${v} (μετά τα μεσάνυχτα)` : v;
 // κάθε επιλογή έχει λογικές ώρες (π.χ. ποτό μόνο βραδάκι)
 const optFrom = () => toMin((state.choice || CONFIG.options[0]).from || "00:00");
 const optTo = () => toMin((state.choice || CONFIG.options[0]).to || "23:55");
@@ -834,7 +837,7 @@ function buildTimeChips(times) {
 }
 buildTimeChips(CONFIG.options[0].times);
 // μενού ώρα : λεπτά (απλές λίστες, όχι το ρολόι του κινητού)
-for (let h = 0; h < 24; h++) $("hSel").add(new Option(p2(h), h));
+for (let h = 6; h < 30; h++) $("hSel").add(new Option(p2(h % 24), h));   // 06 … 23, 00 … 05
 for (let m = 0; m < 60; m += 5) $("mSel").add(new Option(p2(m), m));
 const fromSel = () => setTime(+$("hSel").value * 60 + +$("mSel").value);
 $("hSel").addEventListener("change", fromSel);
@@ -847,7 +850,7 @@ function syncChips() {
     $("dSel").classList.toggle("on", !!dateIn.value && !chipDate);
   }
   const lo = minAllowed();
-  const [sh, sm] = timeIn.value.split(":").map(Number);
+  const tv = toMin(timeIn.value), sh = Math.floor(tv / 60), sm = tv % 60;
   $("hSel").value = sh; $("mSel").value = sm - (sm % 5);
   [...$("hSel").options].forEach(o => { const out = +o.value * 60 + 55 < optFrom() || +o.value * 60 > optTo(); o.hidden = out; o.disabled = out || +o.value * 60 + 55 < lo; });
   [...$("mSel").options].forEach(o => o.disabled = sh * 60 + +o.value < lo || sh * 60 + +o.value > optTo());
@@ -867,8 +870,8 @@ function niceDate(v) {
   return new Date(Y, M - 1, D).toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
 }
 function calLink(d) {
-  const [Y, M, D] = d.date.split("-").map(Number), [h, mi] = d.time.split(":").map(Number);
-  const s = new Date(Y, M - 1, D, h, mi), e = new Date(s.getTime() + 3 * 36e5);
+  const [Y, M, D] = d.date.split("-").map(Number);
+  const s = new Date(Y, M - 1, D, 0, toMin(d.time)), e = new Date(s.getTime() + 3 * 36e5);
   const f = x => `${x.getFullYear()}${p2(x.getMonth() + 1)}${p2(x.getDate())}T${p2(x.getHours())}${p2(x.getMinutes())}00`;
   const q = new URLSearchParams({
     action: "TEMPLATE", text: `💕 Ραντεβού για ${d.choice.name.toLowerCase()} ${d.choice.emoji}`,
@@ -883,7 +886,7 @@ function textFor(d) {
     `Από: ${d.from}\n` +
     `Επιλογή: ${d.choice.emoji} ${d.choice.name}\n` +
     `Μέρα: ${niceDate(d.date)}\n` +
-    `Ώρα: ${d.time}` +
+    `Ώρα: ${timeLabel(d.time)}` +
     (d.msg ? `\nΜήνυμα: ${d.msg}` : "");
 }
 
@@ -914,7 +917,7 @@ async function sendMail(d) {
     body: JSON.stringify({
       _subject: `💕 ${d.name} → ${d.choice.emoji} ${d.choice.name} · ${niceDate(d.date)} ${d.time}`,
       _template: "table", _captcha: "false",
-      "Όνομα": d.name, "Από": d.from, "Επιλογή": `${d.choice.emoji} ${d.choice.name}`, "Μέρα": niceDate(d.date), "Ώρα": d.time,
+      "Όνομα": d.name, "Από": d.from, "Επιλογή": `${d.choice.emoji} ${d.choice.name}`, "Μέρα": niceDate(d.date), "Ώρα": timeLabel(d.time),
       "Μήνυμα": d.msg || "-", "Προσπάθειες να πατήσει το ΟΧΙ": String(state.noCount),
     }),
   });
@@ -947,7 +950,7 @@ $("form").addEventListener("submit", async e => {
 let pending = null, sentOnce = false;
 function fillSummary(sm, d) {
   sm.innerHTML = "";
-  [["💕 ", d.name], ["📍 ", d.from], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
+  [["💕 ", d.name], ["📍 ", d.from], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", timeLabel(d.time)]].forEach(([pre, val], i) => {
     if (i) sm.append(document.createElement("br"));
     const b = document.createElement("b"); b.textContent = val; sm.append(pre, b);
   });
@@ -1045,7 +1048,7 @@ const store = {
   get() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { return null; } },
   set(v) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(v)); } catch (e) {} },
 };
-const whenOf = a => { const [Y, M, D] = a.date.split("-").map(Number), [h, m] = a.time.split(":").map(Number); return new Date(Y, M - 1, D, h, m); };
+const whenOf = a => { const [Y, M, D] = a.date.split("-").map(Number); return new Date(Y, M - 1, D, 0, toMin(a.time)); };
 
 /* ---------- εισιτήριο (εικόνα για να την κρατήσει) ---------- */
 async function makeTicket(a) {
@@ -1072,7 +1075,7 @@ async function makeTicket(a) {
   x.font = `56px ${titleFont}`; x.fillText("ΡΑΝΤΕΒΟΥ", W / 2, ty + 290);
   // στοιχεία
   const ch = CONFIG.options.find(o => o.id === a.choice) || CONFIG.options[0];
-  const rows = [["ΠΟΤΕ", niceDate(a.date)], ["ΩΡΑ", a.time], ["ΤΙ", `${ch.emoji} ${ch.name}`], ["ΠΟΙΑ / ΠΟΙΟΣ", a.name + (a.from ? ` · ${a.from}` : "")]];
+  const rows = [["ΠΟΤΕ", niceDate(a.date)], ["ΩΡΑ", afterMidnight(a.time) ? a.time + " (ξημερ.)" : a.time], ["ΤΙ", `${ch.emoji} ${ch.name}`], ["ΠΟΙΑ / ΠΟΙΟΣ", a.name + (a.from ? ` · ${a.from}` : "")]];
   let yy = ty + 440;
   rows.forEach(([k, v]) => {
     x.textAlign = "left"; x.fillStyle = "#7a6a8a"; x.font = `26px ${titleFont}`; x.fillText(k, tx + 70, yy);

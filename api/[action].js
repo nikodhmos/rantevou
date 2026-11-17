@@ -5,7 +5,9 @@ const ORIGINS = ["https://nikodhmos.github.io"];
 
 const RANTEVOU = { food: "🍝 ΦΑΓΗΤΟ", meze: "🫒 ΜΕΖΕΔΕΣ", drink: "🍸 ΠΟΤΟ" };
 // λογικές ώρες ανά επιλογή (ίδιες με τη σελίδα)
-const RANTEVOU_HOURS = { food: ["12:00", "23:55"], meze: ["12:00", "23:55"], drink: ["19:00", "23:55"] };
+const RANTEVOU_HOURS = { food: ["12:30", "23:30"], meze: ["12:30", "23:30"], drink: ["20:00", "01:00"] };
+// ώρες πριν τις 06:00 = μετά τα μεσάνυχτα της ίδιας βραδιάς
+const lateMin = v => { const [h, m] = v.split(":").map(Number); return (h < 6 ? h + 24 : h) * 60 + m; };
 const DRINKS = {
   krasi:    { label: "🍷 Κρασί",    places: ["bit", "rotonda"] },
   mpyra:    { label: "🍺 Μπύρα",    places: ["lefkos", "magkazi"] },
@@ -74,14 +76,14 @@ function niceDate(v) {
   const [Y, M, D] = v.split("-").map(Number);
   return new Date(Date.UTC(Y, M - 1, D, 12)).toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
-function checkWhen(date, time) {
+function checkWhen(date, time, late = false) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return "Λάθος μέρα ή ώρα";
   const today = athensToday();
   if (date < today) return "Στο παρελθόν δεν πάμε";
   if (date === today) {
     const now = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Athens", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
     const mins = v => { const [h, m] = v.split(":").map(Number); return h * 60 + m; };
-    if (mins(time) < mins(now) - 10) return "Αυτή η ώρα πέρασε";
+    if ((late ? lateMin(time) : mins(time)) < mins(now) - 10) return "Αυτή η ώρα πέρασε";
   }
   const max = new Date(Date.parse(today) + 90 * 864e5).toISOString().slice(0, 10);
   if (date > max) return "Πολύ μακριά";
@@ -208,16 +210,17 @@ module.exports = async (req, res) => {
       const date = clean(body.date, 10), time = clean(body.time, 5);
       const tries = Math.max(0, Math.min(999, parseInt(body.noCount, 10) || 0));
       if (!name) return json({ ok: false, error: "Γράψε όνομα" }, 400);
-      const bad = checkWhen(date, time);
+      const bad = checkWhen(date, time, body.kind === "rantevou" && body.choice === "drink");
       if (bad) return json({ ok: false, error: bad }, 400);
 
-      let title, lines;
+      let title, lines, tl = time;
       if (body.kind === "rantevou") {
         const choice = RANTEVOU[body.choice];
         if (!choice) return json({ ok: false, error: "Λάθος επιλογή" }, 400);
         const [hFrom, hTo] = RANTEVOU_HOURS[body.choice];
-        if (time < hFrom || time > hTo) return json({ ok: false, error: `Διάλεξε ώρα ${hFrom}–${hTo}` }, 400);
-        title = `${body.change === true ? "🔁 ΑΛΛΑΓΗ · " : "💕 "}${name}${from ? ` (${from})` : ""} → ${choice} · ${niceDate(date)} ${time}`;
+        tl = lateMin(time) >= 1440 ? `${time} (μετά τα μεσάνυχτα)` : time;
+        if (lateMin(time) < lateMin(hFrom) || lateMin(time) > lateMin(hTo)) return json({ ok: false, error: `Διάλεξε ώρα ${hFrom}–${hTo}` }, 400);
+        title = `${body.change === true ? "🔁 ΑΛΛΑΓΗ · " : "💕 "}${name}${from ? ` (${from})` : ""} → ${choice} · ${niceDate(date)} ${tl}`;
         lines = [`Όνομα: ${name}`];
         if (from) lines.push(`Από: ${from}`);
         lines.push(`Επιλογή: ${choice}`);
@@ -229,7 +232,7 @@ module.exports = async (req, res) => {
       } else {
         return json({ ok: false, error: "bad kind" }, 400);
       }
-      lines.push(`Μέρα: ${niceDate(date)}`, `Ώρα: ${time}`);
+      lines.push(`Μέρα: ${niceDate(date)}`, `Ώρα: ${tl}`);
       if (msg) lines.push(`Μήνυμα: ${msg}`);
       lines.push(`Προσπάθειες να πατήσει το ΟΧΙ: ${tries}`);
 
