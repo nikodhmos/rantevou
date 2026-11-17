@@ -230,7 +230,12 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 #timeChips,#minChips{justify-content:center}
 .chip:disabled{opacity:.35; cursor:not-allowed}
 .err.soft{color:#7a6a8a; min-height:0}
-#time{font-size:26px; text-align:center}
+.tsel{display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 4px}
+.tsel select{font-family:'Press Start 2P',monospace; font-size:26px; color:var(--ink); background:#fff;
+  border:0; border-radius:0; padding:14px 10px; min-width:110px; text-align:center; text-align-last:center;
+  -webkit-appearance:none; appearance:none; cursor:pointer;
+  box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #e4dccb}
+.tsel .colon{font-family:'Press Start 2P',monospace; font-size:26px; color:var(--ink)}
 </style>
 </head>
 <body>
@@ -289,9 +294,13 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
         <input type="date" id="date">
       </label>
       <div class="chips" id="dateChips"></div>
-      <label>Ώρα <small>(πάτα πάνω για άλλη ώρα)</small>
-        <input type="time" id="time" value="21:00" step="300">
-      </label>
+      <label>Ώρα <small>(πάτα πάνω για άλλη ώρα)</small></label>
+      <div class="tsel">
+        <select id="hSel" aria-label="Ώρα"></select>
+        <span class="colon">:</span>
+        <select id="mSel" aria-label="Λεπτά"></select>
+      </div>
+      <input type="hidden" id="time" value="21:00">
       <div class="chips" id="timeChips"></div>
       <p class="err soft" id="timeNote"></p>
       <label>Κάτι άλλο; <small>(προαιρετικό)</small>
@@ -699,12 +708,19 @@ function buildTimeChips(times) {
   });
 }
 buildTimeChips(CONFIG.options[0].times);
-timeIn.addEventListener("change", () => { if (timeIn.value) setTime(toMin(timeIn.value)); });
-timeIn.addEventListener("blur", () => { if (timeIn.value) setTime(toMin(timeIn.value)); });
+// μενού ώρα : λεπτά (απλές λίστες, όχι το ρολόι του κινητού)
+for (let h = 0; h < 24; h++) $("hSel").add(new Option(p2(h), h));
+for (let m = 0; m < 60; m += 5) $("mSel").add(new Option(p2(m), m));
+const fromSel = () => setTime(+$("hSel").value * 60 + +$("mSel").value);
+$("hSel").addEventListener("change", fromSel);
+$("mSel").addEventListener("change", fromSel);
 function syncChips() {
   document.querySelectorAll("#dateChips .chip").forEach(c => c.classList.toggle("on", c.dataset.v === dateIn.value));
   const lo = minAllowed();
-  timeIn.min = lo ? fromMin(Math.min(lo, LAST)) : "";
+  const [sh, sm] = timeIn.value.split(":").map(Number);
+  $("hSel").value = sh; $("mSel").value = sm - (sm % 5);
+  [...$("hSel").options].forEach(o => o.disabled = +o.value * 60 + 55 < lo);
+  [...$("mSel").options].forEach(o => o.disabled = sh * 60 + +o.value < lo);
   document.querySelectorAll("#timeChips .chip").forEach(c => {
     c.classList.toggle("on", c.dataset.v === timeIn.value);
     c.disabled = toMin(c.dataset.v) < lo;
