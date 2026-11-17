@@ -213,19 +213,23 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
   box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #e4dccb}
 .summary b{color:var(--pink2)}
 .hidden{display:none !important}
-/* ---------- ώρα: κουμπιά ---------- */
-.tgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:12px 4px 4px}
-.tgrid.min{grid-template-columns:repeat(4,1fr)}
-.tbtn{font-family:'Press Start 2P',monospace; font-size:15px; padding:14px 0; border:0; cursor:pointer;
-  color:var(--ink); background:#f3e6c4; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
-  box-shadow:0 -3px 0 var(--ink), 0 3px 0 var(--ink), -3px 0 0 var(--ink), 3px 0 0 var(--ink), inset -3px -3px 0 #d9c99e}
-.tbtn small{display:block; font-family:'Tiny5',monospace; font-size:13px; margin-top:6px; color:#7a6a8a}
-.tbtn.on{background:var(--pink); color:#fff;
-  box-shadow:0 -3px 0 var(--ink), 0 3px 0 var(--ink), -3px 0 0 var(--ink), 3px 0 0 var(--ink), inset -3px -3px 0 var(--pink2)}
-.tbtn.on small{color:#fff}
-.tbtn:active{transform:translateY(2px)}
-.picked{text-align:center; font-size:22px; margin:12px 0 0}
-.picked b{color:var(--pink2)}
+/* ---------- ρολόι ---------- */
+.clock{display:flex; align-items:center; justify-content:center; gap:10px; margin:14px 0 4px}
+.dial{display:flex; flex-direction:column; align-items:center; gap:8px}
+.dial .digits{font-family:'Press Start 2P',monospace; font-size:34px; line-height:1; color:var(--ink);
+  background:#fff; padding:14px 12px; min-width:96px; text-align:center;
+  box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #e4dccb}
+.clock .colon{font-family:'Press Start 2P',monospace; font-size:34px; color:var(--ink); animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.arrow{font-family:'Press Start 2P',monospace; font-size:18px; width:96px; height:52px; border:0; cursor:pointer;
+  color:#fff; background:var(--pink2); touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  box-shadow:0 -3px 0 var(--ink), 0 3px 0 var(--ink), -3px 0 0 var(--ink), 3px 0 0 var(--ink), inset -3px -3px 0 #a83a66}
+.arrow:active{transform:translateY(2px); filter:brightness(.92)}
+.arrow:disabled{background:#c9b7c0; cursor:not-allowed; transform:none}
+.qlabel{text-align:center; font-size:18px; color:#7a6a8a; margin:14px 0 0}
+#timeChips,#minChips{justify-content:center}
+.chip:disabled{opacity:.35; cursor:not-allowed}
+.err.soft{color:#7a6a8a; min-height:0}
 </style>
 </head>
 <body>
@@ -284,11 +288,24 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
         <input type="date" id="date">
       </label>
       <div class="chips" id="dateChips"></div>
-      <label>Τι ώρα; <small>(πάτα μία ώρα)</small></label>
-      <div class="tgrid" id="hourGrid"></div>
-      <label>Και λεπτά;</label>
-      <div class="tgrid min" id="minGrid"></div>
-      <p class="picked">Επιλογή: <b id="pickedTime">21:00</b></p>
+      <label>Ώρα</label>
+      <div class="clock" aria-label="Ώρα">
+        <div class="dial">
+          <button type="button" class="arrow" data-h="1" aria-label="μία ώρα μετά">▲</button>
+          <span class="digits" id="hh">21</span>
+          <button type="button" class="arrow" data-h="-1" aria-label="μία ώρα πριν">▼</button>
+        </div>
+        <span class="colon">:</span>
+        <div class="dial">
+          <button type="button" class="arrow" data-m="5" aria-label="5 λεπτά μετά">▲</button>
+          <span class="digits" id="mm">00</span>
+          <button type="button" class="arrow" data-m="-5" aria-label="5 λεπτά πριν">▼</button>
+        </div>
+      </div>
+      <p class="qlabel">ή πάτα κατευθείαν:</p>
+      <div class="chips" id="timeChips"></div>
+      <div class="chips" id="minChips"></div>
+      <p class="err soft" id="timeNote"></p>
       <input type="hidden" id="time" value="21:00">
       <label>Κάτι άλλο; <small>(προαιρετικό)</small>
         <textarea id="msg" rows="2" maxlength="300" placeholder="π.χ. θέλω λαδόκολλα 🥙"></textarea>
@@ -664,36 +681,69 @@ function makeChips(el, items, input) {
   items.forEach(([label, value]) => {
     const c = document.createElement("button");
     c.type = "button"; c.className = "chip"; c.textContent = label; c.dataset.v = value;
-    c.onclick = () => { input.value = value; syncChips(); beep(1200, .04); buzz(10); };
+    c.onclick = () => { input.value = value; setTime(toMin(timeIn.value)); beep(1200, .04); buzz(10); };
     el.appendChild(c);
   });
 }
 makeChips($("dateChips"), dateOpts.map(([l, off]) => { const d = new Date(today); d.setDate(d.getDate() + off); return [l, iso(d)]; }), dateIn);
-/* ώρα: πάτα μία ώρα, μετά (αν θες) λεπτά */
-const HOURS = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
-const HINT = { 12: "μεσημέρι", 18: "απόγευμα", 21: "βράδυ" };
-const MINS = ["00", "15", "30", "45"];
-function tbtn(label, sub, onclick) {
-  const b = document.createElement("button");
-  b.type = "button"; b.className = "tbtn"; b.textContent = label;
-  if (sub) { const s = document.createElement("small"); s.textContent = sub; b.appendChild(s); }
-  b.onclick = () => { onclick(); beep(1100, .04); buzz(10); };
-  return b;
+/* ώρα: ▲▼ (1 ώρα / 5 λεπτά) ή γρήγορα κουμπιά. Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
+const toMin = v => { const [h, m] = v.split(":").map(Number); return h * 60 + m; };
+const fromMin = t => `${p2(Math.floor(t / 60))}:${p2(t % 60)}`;
+function minAllowed() {               // πρώτη επιτρεπτή ώρα (λεπτά από 00:00)
+  if (dateIn.value !== iso(new Date())) return 0;
+  const n = new Date();
+  return Math.ceil((n.getHours() * 60 + n.getMinutes() + 1) / 5) * 5;   // επόμενο 5λεπτο
 }
-HOURS.forEach(h => $("hourGrid").appendChild(Object.assign(tbtn(p2(h), HINT[h] || "", () => {
-  timeIn.value = `${p2(h)}:${timeIn.value.split(":")[1]}`; syncChips();
-}), { hour: h })));
-MINS.forEach(m => $("minGrid").appendChild(Object.assign(tbtn(":" + m, "", () => {
-  timeIn.value = `${timeIn.value.split(":")[0]}:${m}`; syncChips();
-}), { min: m })));
+function setTime(t) {
+  const lo = minAllowed();
+  t = Math.max(lo, Math.min(23 * 60 + 55, t));
+  if (lo > 23 * 60 + 55) t = 23 * 60 + 55;
+  timeIn.value = fromMin(t);
+  syncChips();
+}
+[["19:00"], ["20:00"], ["21:00"], ["22:00"]].forEach(([t]) => {
+  const c = document.createElement("button");
+  c.type = "button"; c.className = "chip"; c.textContent = t; c.dataset.v = t;
+  c.onclick = () => { setTime(toMin(t)); beep(1200, .04); buzz(10); };
+  $("timeChips").appendChild(c);
+});
+["00", "15", "30", "45"].forEach(m => {
+  const c = document.createElement("button");
+  c.type = "button"; c.className = "chip"; c.textContent = ":" + m; c.dataset.m = m;
+  c.onclick = () => { setTime(Math.floor(toMin(timeIn.value) / 60) * 60 + +m); beep(1200, .04); buzz(10); };
+  $("minChips").appendChild(c);
+});
+document.querySelectorAll(".clock .arrow").forEach(b => {
+  const step = () => {
+    if (b.disabled) return;
+    let t = toMin(timeIn.value);
+    if (b.dataset.h) t += 60 * +b.dataset.h;
+    else t = Math.round(t / 5) * 5 + +b.dataset.m;
+    if (t < 0 || t > 23 * 60 + 55) return;
+    setTime(t); beep(900 + (t % 60) * 4, .03); buzz(8);
+  };
+  // πάτημα = ένα βήμα, κράτημα = τρέχει
+  let timer = null, rpt = null;
+  const stop = () => { clearTimeout(timer); clearInterval(rpt); timer = rpt = null; };
+  b.addEventListener("pointerdown", e => { e.preventDefault(); step(); timer = setTimeout(() => rpt = setInterval(step, 110), 400); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener("click", e => { if (e.detail === 0) step(); });   // πληκτρολόγιο
+});
 function syncChips() {
   document.querySelectorAll("#dateChips .chip").forEach(c => c.classList.toggle("on", c.dataset.v === dateIn.value));
-  const [th, tm] = timeIn.value.split(":");
-  document.querySelectorAll("#hourGrid .tbtn").forEach(b => b.classList.toggle("on", p2(b.hour) === th));
-  document.querySelectorAll("#minGrid .tbtn").forEach(b => b.classList.toggle("on", b.min === tm));
-  if ($("pickedTime")) $("pickedTime").textContent = timeIn.value;
+  if ($("hh")) {
+    const t = toMin(timeIn.value), lo = minAllowed(), [h, m] = timeIn.value.split(":");
+    $("hh").textContent = h; $("mm").textContent = m;
+    document.querySelectorAll("#timeChips .chip").forEach(c => { c.classList.toggle("on", c.dataset.v === timeIn.value); c.disabled = toMin(c.dataset.v) < lo; });
+    document.querySelectorAll("#minChips .chip").forEach(c => { c.classList.toggle("on", c.dataset.m === m); c.disabled = Math.floor(t / 60) * 60 + +c.dataset.m < lo; });
+    document.querySelector('.arrow[data-h="-1"]').disabled = t - 60 < lo;
+    document.querySelector('.arrow[data-m="-5"]').disabled = t - 5 < lo;
+    document.querySelector('.arrow[data-h="1"]').disabled = t + 60 > 23 * 60 + 55;
+    document.querySelector('.arrow[data-m="5"]').disabled = t + 5 > 23 * 60 + 55;
+    $("timeNote").textContent = lo > 0 ? (lo > 23 * 60 + 55 ? "Για απόψε είναι αργά, διάλεξε άλλη μέρα 🙂" : `Για σήμερα: από ${fromMin(lo)} και μετά`) : "";
+  }
 }
-["input", "change"].forEach(ev => { dateIn.addEventListener(ev, syncChips); timeIn.addEventListener(ev, syncChips); });
+["input", "change"].forEach(ev => dateIn.addEventListener(ev, () => setTime(toMin(timeIn.value))));
 syncChips();
 $("name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("from").focus(); } });
 $("from").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("from").blur(); } });
@@ -767,6 +817,7 @@ $("form").addEventListener("submit", async e => {
   const fail = m => { err.textContent = m; beep(150, .2); buzz([60, 40, 60]); };
   if (!d.name) { fail("Γράψε το όνομά σου!"); return; }
   if (!d.from) { fail("Πες μου από πού είσαι!"); return; }
+  if (toMin(d.time) < minAllowed()) { setTime(toMin(d.time)); fail("Αυτή η ώρα πέρασε, διάλεξε αργότερα"); return; }
   if (!d.date) { fail("Διάλεξε μέρα!"); return; }
   if (d.date < iso(today)) { fail("Στο παρελθόν δεν πάμε (ακόμα)"); return; }
   if (!d.time) { fail("Διάλεξε ώρα!"); return; }
