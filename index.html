@@ -232,7 +232,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 /* κρυμμένο αλλά ζωντανό, για να συνεχίζει να παίζει */
 #sp:not(.show){opacity:0; pointer-events:none; transform:translateY(-200vh)}
 #sp .sp-tip{font-family:'Press Start 2P',monospace; font-size:9px; line-height:1.6; color:#fff; text-align:center; margin:0 26px 8px}
-#sp iframe{width:100%; height:152px; border:0; display:block; border-radius:12px; background:#282828}
+#sp iframe{width:100%; aspect-ratio:16/9; height:auto; border:0; display:block; background:#000}
 #sp .sp-row{display:flex; gap:8px; margin-top:8px}
 #sp .sp-b{flex:1; font-family:'Press Start 2P',monospace; font-size:8px; line-height:1.4; padding:9px 4px; border:none; background:#3b3355; color:#fff; text-align:center; text-decoration:none; box-shadow:0 0 0 2px var(--gold); cursor:pointer}
 #sp .sp-x{position:absolute; top:-14px; right:-14px; width:30px; height:30px; border:none; background:var(--red); color:#fff;
@@ -302,7 +302,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 <canvas id="moon" data-sprite="moon" data-scale="6"></canvas>
 <div class="sea"></div>
 <button class="btn ghost small" id="music" type="button" aria-label="Μουσική"><span class="eq"><i></i><i></i><i></i></span><span id="musicLabel">♫</span></button>
-<div id="sp" role="dialog" aria-label="Careless Whisper"><button class="sp-x" id="spX" type="button" aria-label="Κλείσε">×</button><p class="sp-tip">πάτα ▶ 🎷</p><div id="spSlot"></div><div class="sp-row"><button class="sp-b" id="spRe" type="button">↻ ΞΑΝΑ</button><a class="sp-b" id="spApp" target="_blank" rel="noopener">ΣΤΟ SPOTIFY ↗</a></div></div>
+<div id="sp" role="dialog" aria-label="Careless Whisper"><button class="sp-x" id="spX" type="button" aria-label="Κλείσε">×</button><p class="sp-tip">🎷 αν δεν παίζει, πάτα ▶</p><div id="spSlot"></div><div class="sp-row"><button class="sp-b" id="spRe" type="button">↻ ΞΑΝΑ</button><a class="sp-b" id="spApp" target="_blank" rel="noopener">ΣΤΟ YOUTUBE ↗</a></div></div>
 
 <main class="box">
 
@@ -431,7 +431,7 @@ const CONFIG = {
     { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", hint: "π.χ. θέλω λαδόκολλα 🥙", times: ["13:00", "14:00", "15:00"], def: "14:00" },
     { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", hint: "π.χ. ένα κοκτέιλ με θέα 🍹", times: ["21:00", "22:00", "23:00"], def: "21:00" },
   ],
-  music: { spotify: "5WDLRQ3VCdVrKw0njWe5E5" },   // Careless Whisper — επίσημος player του Spotify
+  music: { youtube: "izGwDsrQ1eQ" },   // Careless Whisper — επίσημο βίντεο στο YouTube
 };
 
 /* ---------- σε ποιον πάει η απάντηση (προσωπικά links από το link/) ---------- */
@@ -570,25 +570,23 @@ for (let i = 0; i < 60; i++) {
 const $ = id => document.getElementById(id);
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
-/* ---------- ήχοι: κανένας 8-bit ήχος, μόνο το τραγούδι από το Spotify ---------- */
+/* ---------- ήχοι: κανένας 8-bit ήχος, μόνο το τραγούδι από το YouTube ---------- */
 const unlockAudio = () => {}, beep = () => {}, jingle = () => {};
 
-/* ---------- μουσική: επίσημος Spotify player (χωρίς διαφημίσεις YouTube) ---------- */
-const musicBtn = $("music"), sp = $("sp");
+/* ---------- μουσική: επίσημο βίντεο YouTube ---------- */
+const musicBtn = $("music"), sp = $("sp"), YT = CONFIG.music.youtube;
 let spLoaded = false;
-const spSrc = () => "https://open.spotify.com/embed/track/" + CONFIG.music.spotify + "?theme=0&t=" + Date.now();
-$("spApp").href = "https://open.spotify.com/track/" + CONFIG.music.spotify;
-// αν το Spotify αργήσει («upstream request timeout»), ξαναφορτώνει τον player
-$("spRe").onclick = () => { buzz(10); const f = $("spFrame"); if (f) f.src = spSrc(); else loadSpotify(); };
-function loadSpotify() {
+const spSrc = () => "https://www.youtube.com/embed/" + YT + "?autoplay=1&playsinline=1&rel=0&loop=1&playlist=" + YT;
+$("spApp").href = "https://www.youtube.com/watch?v=" + YT;
+function loadPlayer() {
   if (spLoaded) return; spLoaded = true;
   const f = document.createElement("iframe");
-  f.id = "spFrame"; f.src = spSrc();
-  f.title = "Careless Whisper — Spotify";
-  f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+  f.id = "spFrame"; f.src = spSrc(); f.title = "Careless Whisper";
+  f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
   $("spSlot").appendChild(f);
 }
-function openPlayer() { loadSpotify(); sp.classList.add("show"); musicBtn.classList.remove("nudge"); musicBtn.classList.add("on"); }
+$("spRe").onclick = () => { buzz(10); const f = $("spFrame"); if (f) f.src = spSrc(); else loadPlayer(); };
+function openPlayer() { loadPlayer(); sp.classList.add("show"); musicBtn.classList.remove("nudge"); musicBtn.classList.add("on"); }
 function closePlayer() { sp.classList.remove("show"); }
 musicBtn.onclick = () => { buzz(15); sp.classList.contains("show") ? closePlayer() : openPlayer(); };
 $("spX").onclick = () => { buzz(10); closePlayer(); };
@@ -609,7 +607,7 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let opening = false;
 openBtn.onclick = () => {
   if (opening) return; opening = true;
-  unlockAudio(); if (!spLoaded) { loadSpotify(); musicBtn.classList.add("nudge"); }
+  unlockAudio(); if (!spLoaded) openPlayer();
   setTimeout(() => { beep(523, .08); beep(784, .12, .08); }, 30);
   buzz(20);
   if (RM) { show("s-ask"); return; }
