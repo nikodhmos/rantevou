@@ -568,21 +568,8 @@ for (let i = 0; i < 60; i++) {
 const $ = id => document.getElementById(id);
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
-/* ---------- 8-bit εφέ ---------- */
-let actx = null, soundOn = true;
-function unlockAudio() {
-  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
-  if (actx && actx.state === "suspended") actx.resume();
-}
-addEventListener("pointerdown", unlockAudio, { passive: true });
-function beep(f = 660, d = .08, when = 0) {
-  if (!soundOn || !actx || actx.state !== "running") return;
-  const t = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
-  o.type = "square"; o.frequency.setValueAtTime(f, t);
-  g.gain.setValueAtTime(.03, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
-  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d + .02);
-}
-const jingle = () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => beep(f, .13, i * .11));
+/* ---------- ήχοι: κανένας 8-bit ήχος, μόνο το τραγούδι από το Spotify ---------- */
+const unlockAudio = () => {}, beep = () => {}, jingle = () => {};
 
 /* ---------- μουσική: επίσημος Spotify player (χωρίς διαφημίσεις YouTube) ---------- */
 const musicBtn = $("music"), sp = $("sp");
