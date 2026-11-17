@@ -153,6 +153,8 @@ module.exports = async (req, res) => {
         if (!f) return json({ ok: false, error: "Γράψε όνομα" }, 400);
         if (!["rantevou", "retsines"].includes(site)) return json({ ok: false, error: "bad site" }, 400);
         const rec = { site, f, mode };
+        const note = clean(body.note, 200);
+        if (note) rec.note = note;
         if (mode === "ntfy") rec.topic = newTopic();
         else if (mode === "email") {
           rec.e = clean(body.e, 100);
@@ -177,7 +179,7 @@ module.exports = async (req, res) => {
       if (limited(ip, "resolve", 60, 6e5)) return json({ ok: false, error: "slow down" }, 429);
       const rec = await getLink(body.c);
       if (!rec) return json({ ok: false, error: "not found" }, 404);
-      return json({ ok: true, site: rec.site, f: rec.f, mode: rec.mode, e: rec.e, p: rec.p });
+      return json({ ok: true, site: rec.site, f: rec.f, mode: rec.mode, e: rec.e, p: rec.p, note: rec.note });
     }
 
     // Δοκιμή για τον δημιουργό του link

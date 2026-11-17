@@ -171,6 +171,19 @@ h2.big{font-size:clamp(22px,7vw,32px); margin-bottom:12px}
 #s-done .btns{gap:20px; flex-direction:column}
 
 .confetti{position:fixed; top:-12px; z-index:40; pointer-events:none; animation:fall linear forwards}
+.btn.givenup{animation:giveup .9s steps(9) 1}
+.letter{position:relative; margin:4px 6px 14px; padding:16px 16px 12px; text-align:left; background:#fff;
+  font-size:22px; line-height:1.3; transform:rotate(-1.2deg);
+  box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #f3d9e3}
+.letter p{margin:0; white-space:pre-wrap; word-break:break-word}
+.letter .sig{margin-top:8px; text-align:right; color:var(--pink2); font-size:20px}
+.countdown{display:flex; justify-content:center; gap:10px; margin:10px 0 16px; flex-wrap:wrap}
+.countdown .cd{min-width:76px; padding:10px 6px; background:#fff; text-align:center;
+  box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #e4dccb}
+.countdown .cd b{display:block; font-family:'Press Start 2P',monospace; font-size:24px; color:var(--pink2)}
+.countdown .cd small{font-size:16px; color:#7a6a8a}
+.countdown .now{font-family:'Press Start 2P',monospace; font-size:16px; color:var(--pink2); line-height:1.7}
+@keyframes giveup{0%{transform:rotate(0)}30%{transform:rotate(-20deg) translateY(-10px)}60%{transform:rotate(12deg) translateY(6px)}100%{transform:none}}
 /* φάκελος που ανοίγει */
 .envwrap{position:relative; display:inline-block}
 .envwrap.shake canvas{animation:shake .38s steps(4) 1}
@@ -287,7 +300,6 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 <canvas id="moon" data-sprite="moon" data-scale="6"></canvas>
 <div class="sea"></div>
 <button class="btn ghost small" id="music" type="button" aria-label="Μουσική"><span class="eq"><i></i><i></i><i></i></span><span id="musicLabel">♫</span></button>
-<div id="ytwrap"><div class="yt-tip">πάτα ▶ για μουσική</div><button class="yt-x" id="ytx" type="button">×</button><div id="yt"></div></div>
 
 <main class="box">
 
@@ -306,6 +318,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 
   <!-- 1. Η ερώτηση -->
   <section class="screen" id="s-ask">
+    <div class="letter hidden" id="letter"><p id="letterText"></p><p class="sig">— <span id="letterFrom"></span></p></div>
     <canvas class="heart-beat" data-sprite="heart" data-scale="9" style="height:110px; width:auto; margin:0 auto"></canvas>
     <h1>Θες να πάμε <span class="hl pink">ραντεβού</span>;</h1>
     <p class="sub">διάλεξε σοφά...</p>
@@ -382,9 +395,21 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
     <div class="summary" id="summary"></div>
     <p class="note" id="doneNote"></p>
     <div class="btns">
+      <button class="btn gold small" type="button" id="ticketBtn">🎟️ ΚΡΑΤΑ ΤΟ ΕΙΣΙΤΗΡΙΟ</button>
       <a class="btn blue small" id="cal" target="_blank" rel="noopener">📅 ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ</a>
     </div>
     <p class="note"><button type="button" class="linkbtn" id="changeMind">↺ άλλαξα γνώμη</button></p>
+  </section>
+
+  <section class="screen" id="s-again">
+    <canvas class="heart-beat" data-sprite="heart" data-scale="8" style="height:88px; width:auto; margin:0 auto"></canvas>
+    <p class="ok" id="againLead">Το ραντεβού μας είναι σε</p>
+    <div class="countdown" id="countdown"></div>
+    <div class="summary" id="againSum"></div>
+    <div class="btns">
+      <button class="btn gold small" type="button" id="againTicket">🎟️ ΤΟ ΕΙΣΙΤΗΡΙΟ</button>
+    </div>
+    <p class="note"><button type="button" class="linkbtn" id="againChange">↺ άλλαξα γνώμη</button> · <button type="button" class="linkbtn" id="againIntro">δες ξανά την πρόσκληση</button></p>
   </section>
 
 </main>
@@ -403,11 +428,7 @@ const CONFIG = {
     { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", hint: "π.χ. θέλω λαδόκολλα 🥙", times: ["13:00", "14:00", "15:00"], def: "14:00" },
     { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", hint: "π.χ. ένα κοκτέιλ με θέα 🍹", times: ["21:00", "22:00", "23:00"], def: "21:00" },
   ],
-  music: {
-    // George Michael – Careless Whisper (επίσημο YouTube)
-    youtube: ["izGwDsrQ1eQ"],
-    volume: 70,
-  },
+  music: { volume: 70 },   // δική μας 8-bit μελωδία (χωρίς YouTube)
 };
 
 /* ---------- σε ποιον πάει η απάντηση (προσωπικά links από το link/) ---------- */
@@ -562,75 +583,73 @@ function beep(f = 660, d = .08, when = 0) {
 }
 const jingle = () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => beep(f, .13, i * .11));
 
-/* ---------- μουσική (YouTube) ---------- */
-let yt = null, ytReady = false, ytWant = false, ytIdx = 0, ytFailed = false;
-const musicBtn = $("music");
-(function loadYT() {
-  const s = document.createElement("script");
-  s.src = "https://www.youtube.com/iframe_api";
-  s.onerror = () => { ytFailed = true; markIntroReady(); };
-  document.head.appendChild(s);
-})();
-window.onYouTubeIframeAPIReady = () => {
-  const id = CONFIG.music.youtube[0];
-  yt = new YT.Player("yt", {
-    width: 200, height: 200, videoId: id,
-    playerVars: { autoplay: 0, controls: 1, playsinline: 1, loop: 1, playlist: id, rel: 0, origin: location.origin },
-    events: {
-      onReady: () => { ytReady = true; yt.setVolume(CONFIG.music.volume); markIntroReady(); if (ytWant) playMusic(); },
-      onStateChange: e => {
-        if (e.data === YT.PlayerState.ENDED) { yt.seekTo(0); yt.playVideo(); }
-        if (e.data === YT.PlayerState.PLAYING) { musicBtn.classList.remove("nudge"); setTimeout(() => ytwrap.classList.remove("show"), 600); }
-        updateMusicBtn();
-      },
-      onError: () => {
-        ytIdx++;
-        const next = CONFIG.music.youtube[ytIdx];
-        if (next) { yt.loadVideoById(next); }
-        else { ytFailed = true; musicBtn.classList.add("nudge"); updateMusicBtn(); }
-      },
-    },
-  });
+/* ---------- μουσική: δική μας 8-bit μελωδία (WebAudio, χωρίς διαφημίσεις) ---------- */
+// Πρωτότυπη ρομαντική μελωδία: C – Am – F – G – C – Am – Dm – G, 92 bpm, ανά όγδοα.
+const SONG = {
+  bpm: 92,
+  chords: [[48, [60, 64, 67]], [45, [57, 60, 64]], [41, [57, 60, 65]], [43, [59, 62, 67]],
+           [48, [60, 64, 67]], [45, [57, 60, 64]], [50, [57, 62, 65]], [43, [59, 62, 67]]],
+  melody: [ // [νότα MIDI ή null, διάρκεια σε όγδοα] — 8 όγδοα ανά μέτρο
+    [[76, 2], [79, 2], [76, 1], [74, 1], [72, 2]],
+    [[69, 2], [72, 2], [76, 3], [null, 1]],
+    [[77, 2], [76, 1], [74, 1], [72, 2], [69, 2]],
+    [[71, 2], [74, 2], [79, 4]],
+    [[76, 2], [79, 2], [81, 1], [79, 1], [76, 2]],
+    [[72, 2], [76, 2], [74, 3], [null, 1]],
+    [[74, 2], [77, 2], [76, 1], [74, 1], [72, 2]],
+    [[71, 2], [74, 1], [76, 1], [72, 4]],
+  ],
 };
-function isPlaying() { return ytReady && yt.getPlayerState && yt.getPlayerState() === 1; }
-let musicCheck = 0;
-function playMusic() {
-  ytWant = true;
-  if (!ytReady || ytFailed) return;
-  yt.unMute(); yt.setVolume(CONFIG.music.volume); yt.playVideo();
-  // αν σε 2.5" δεν παίζει (π.χ. iPhone), δείξε κουμπί να το ξεκινήσουν με το χέρι
-  clearTimeout(musicCheck);
-  musicCheck = setTimeout(() => {
-    if (soundOn && ytWant && !isPlaying()) musicBtn.classList.add("nudge");
-    updateMusicBtn();
-  }, 2500);
+const LEAD = {}; // βήμα (0..63) → [midi, όγδοα]
+SONG.melody.forEach((bar, bi) => { let st = bi * 8; bar.forEach(([n, len]) => { if (n) LEAD[st] = [n, len]; st += len; }); });
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+const mus = { on: false, next: 0, step: 0, timer: 0, out: null };
+const musicBtn = $("music");
+function voice(type, midi, t, dur, vol) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(hz(midi), t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(vol * 0.55, t + Math.min(0.12, dur * 0.5));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(mus.out); o.start(t); o.stop(t + dur + 0.03);
 }
-const ytwrap = document.getElementById("ytwrap");
-document.getElementById("ytx").onclick = () => ytwrap.classList.remove("show");
-function pauseMusic() { ytWant = false; if (ytReady) yt.pauseVideo(); }
+function scheduleStep(step, t) {
+  const e = 60 / SONG.bpm / 2, bar = Math.floor(step / 8), pos = step % 8;
+  const [root, tones] = SONG.chords[bar];
+  if (LEAD[step]) voice("square", LEAD[step][0], t, LEAD[step][1] * e * 0.92, 0.07);   // μελωδία
+  if (pos % 2 === 0) voice("triangle", [root, root + 7, root + 12, root + 7][pos / 2], t, e * 1.8, 0.22); // μπάσο
+  voice("square", tones[[0, 1, 2, 1][pos % 4]], t, e * 0.7, 0.018);                   // απαλό arpeggio
+}
+function tick() {
+  if (!mus.on || !actx) return;
+  const e = 60 / SONG.bpm / 2;
+  while (mus.next < actx.currentTime + 0.3) { scheduleStep(mus.step, mus.next); mus.next += e; mus.step = (mus.step + 1) % 64; }
+  mus.timer = setTimeout(tick, 60);
+}
+function isPlaying() { return mus.on && !!actx && actx.state === "running"; }
+function playMusic() {
+  unlockAudio();
+  if (!actx || mus.on || !soundOn) return;
+  if (!mus.out) { mus.out = actx.createGain(); mus.out.gain.value = CONFIG.music.volume / 100; mus.out.connect(actx.destination); }
+  mus.on = true; mus.next = actx.currentTime + 0.08; tick(); updateMusicBtn();
+}
+function pauseMusic() { mus.on = false; clearTimeout(mus.timer); updateMusicBtn(); }
 function updateMusicBtn() {
-  const on = soundOn && (isPlaying() || (ytWant && !ytFailed));
-  musicBtn.classList.toggle("on", on);
+  musicBtn.classList.toggle("on", soundOn && mus.on);
   $("musicLabel").textContent = soundOn ? "♫" : "OFF";
 }
 musicBtn.onclick = () => {
-  if (musicBtn.classList.contains("nudge") || (soundOn && ytWant && !isPlaying())) {
-    // δεν ξεκίνησε μόνη της: ξαναδοκίμασε και δείξε το player για να πατήσουν ▶
-    musicBtn.classList.remove("nudge");
-    soundOn = true; playMusic();
-    if (ytFailed) { window.open("https://www.youtube.com/watch?v=" + CONFIG.music.youtube[0], "_blank"); return; }
-    setTimeout(() => { if (!isPlaying()) ytwrap.classList.add("show"); }, 700);
-    updateMusicBtn(); return;
-  }
+  unlockAudio();
   soundOn = !soundOn;
   soundOn ? playMusic() : pauseMusic();
   updateMusicBtn(); buzz(15);
 };
 // σταματάει όταν κλείνει η οθόνη / αλλάζει app, ξαναπαίζει όταν γυρίσεις
 document.addEventListener("visibilitychange", () => {
-  if (!ytReady) return;
-  if (document.hidden) yt.pauseVideo();
-  else if (soundOn && ytWant) yt.playVideo();
+  if (!actx) return;
+  if (document.hidden) { clearTimeout(mus.timer); actx.suspend(); }
+  else { actx.resume().then(() => { if (mus.on) { mus.next = actx.currentTime + 0.08; tick(); } }); }
 });
 
 /* ---------- οθόνες ---------- */
@@ -644,7 +663,7 @@ function show(id) {
 const openBtn = $("open");
 function markIntroReady() { openBtn.textContent = "ΑΝΟΙΞΕ ▶"; }
 openBtn.textContent = "...";
-setTimeout(markIntroReady, 3500);            // αν αργεί το YouTube, προχώρα χωρίς να περιμένεις
+markIntroReady();
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let opening = false;
 openBtn.onclick = () => {
@@ -692,10 +711,23 @@ const yes = $("yes"), no = $("no"), hint = $("hint");
 const NO_TEXTS = ["Σίγουρα;", "Ξανασκέψου το", "Χαχα όχι", "Δεν πιάνεται", "Πιο γρήγορα!", "Σε παρακαλώ 🥺",
   "Μην επιμένεις", "Θα κερνάω εγώ!", "Ούτε για πλάκα", "Άσ' το", "Έλα τώρα", "Πάτα το ΝΑΙ"];
 const HINTS = { 1: "ε όχι 🙂", 3: "το ΟΧΙ είναι διακοσμητικό", 6: "σε βλέπω που προσπαθείς 👀",
-  10: "οκ φτάνει, πάτα το ΝΑΙ", 15: "θα μου πει το κινητό πόσες φορές προσπάθησες..." };
-let lastDodge = 0;
+  10: "οκ φτάνει, πάτα το ΝΑΙ", 13: "θα μου πει το κινητό πόσες φορές προσπάθησες..." };
+const GIVE_UP = 15;
+let lastDodge = 0, gaveUp = false, gaveUpAt = 0;
+// μετά από τόσες προσπάθειες το ΟΧΙ κουράζεται, πέφτει και γίνεται δεύτερο ΝΑΙ
+function noGivesUp() {
+  gaveUp = true; gaveUpAt = performance.now();
+  no.textContent = "ΟΚ, ΝΑΙ 😅";
+  no.classList.remove("no"); no.classList.add("yes", "givenup");
+  const r = no.getBoundingClientRect(), y = $("yes").getBoundingClientRect();
+  no.style.left = Math.max(12, Math.min(innerWidth - r.width - 12, y.left + y.width / 2 - r.width / 2)) + "px";
+  no.style.top = Math.min(innerHeight - r.height - 20, y.bottom + 24) + "px";
+  hint.textContent = "οκ, κέρδισες 😅";
+  beep(330, .12); beep(262, .14, .12); beep(196, .2, .26); buzz([40, 30, 80]);
+}
 
 function dodge(px, py, force) {
+  if (gaveUp) return;
   const now = performance.now();
   if (!force && now - lastDodge < 160) return;
   lastDodge = now;
@@ -708,6 +740,7 @@ function dodge(px, py, force) {
     no.offsetWidth;
   }
   state.noCount++;
+  if (state.noCount >= GIVE_UP) { noGivesUp(); return; }
   no.textContent = NO_TEXTS[(state.noCount - 1) % NO_TEXTS.length];
   if (HINTS[state.noCount]) hint.textContent = HINTS[state.noCount];
   yes.style.setProperty("--s", Math.min(1 + state.noCount * .07, 1.6).toFixed(2));
@@ -729,13 +762,13 @@ function dodge(px, py, force) {
 const askActive = () => $("s-ask").classList.contains("active");
 
 document.addEventListener("pointermove", e => {
-  if (e.pointerType === "touch" || !askActive()) return;
+  if (gaveUp || e.pointerType === "touch" || !askActive()) return;
   const r = no.getBoundingClientRect(), m = 45;
   if (e.clientX > r.left - m && e.clientX < r.right + m && e.clientY > r.top - m && e.clientY < r.bottom + m)
     dodge(e.clientX, e.clientY);
 });
 document.addEventListener("touchstart", e => {
-  if (!askActive() || e.target.closest("#yes, #music")) return;
+  if (gaveUp || !askActive() || e.target.closest("#yes, #music")) return;
   const t = e.touches[0], r = no.getBoundingClientRect(), m = 40;
   if (t.clientX > r.left - m && t.clientX < r.right + m && t.clientY > r.top - m && t.clientY < r.bottom + m) {
     if (e.target === no && e.cancelable) e.preventDefault();
@@ -743,11 +776,16 @@ document.addEventListener("touchstart", e => {
   }
 }, { passive: false });
 ["pointerdown", "click"].forEach(ev => no.addEventListener(ev, e => {
+  if (gaveUp) {
+    // το ίδιο πάτημα που το «κούρασε» δεν μετράει σαν ΝΑΙ — πρέπει να το πατήσει ξανά
+    if (ev === "click" && performance.now() - gaveUpAt > 500) yes.onclick();
+    return;
+  }
   e.preventDefault(); e.stopPropagation();
   if (e.pointerType === "touch" || (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents)) return;
   dodge(e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, true);
 }));
-no.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dodge(innerWidth / 2, innerHeight / 2, true); } });
+no.addEventListener("keydown", e => { if (gaveUp) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dodge(innerWidth / 2, innerHeight / 2, true); } });
 addEventListener("resize", () => {
   if (!no.classList.contains("flying")) return;
   const r = no.getBoundingClientRect();
@@ -987,7 +1025,10 @@ $("confirmYes").onclick = async () => {
   }
 
   fillSummary($("summary"), d);
-  if (!/δεν στάλθηκε/.test(note)) sentOnce = true;
+  if (!/δεν στάλθηκε/.test(note)) {
+    sentOnce = true;
+    store.set({ name: d.name, from: d.from, date: d.date, time: d.time, msg: d.msg, choice: d.choice.id });
+  }
   $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); $("whenHead").classList.remove("hidden");
   $("doneNote").textContent = note;
   $("cal").href = calLink(d);
@@ -1030,12 +1071,123 @@ const destReady = !CODE ? Promise.resolve() :
     .then(r => r.json()).then(j => {
       if (!j.ok || j.site !== "rantevou") return;
       DEST.f = j.f;
+      if (j.note) DEST.note = String(j.note).slice(0, 200);
       if (j.mode === "ntfy") DEST.c = CODE;
       else if (j.mode === "email") { DEST.e = j.e; }
       else if (j.p) { DEST.p = j.p; DEST.m = j.mode === "wa" ? "w" : "s"; }
       showFrom();
     }).catch(() => {});
 showFrom();
+
+/* ---------- αποθήκευση απάντησης (για αντίστροφη μέτρηση) ---------- */
+const SAVE_KEY = "rantevou-answer:" + (CODE || "default");
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { return null; } },
+  set(v) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(v)); } catch (e) {} },
+};
+const whenOf = a => { const [Y, M, D] = a.date.split("-").map(Number), [h, m] = a.time.split(":").map(Number); return new Date(Y, M - 1, D, h, m); };
+
+/* ---------- εισιτήριο (εικόνα για να την κρατήσει) ---------- */
+async function makeTicket(a) {
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"); x.imageSmoothingEnabled = false;
+  const titleFont = getComputedStyle(document.querySelector("h2")).fontFamily;
+  const bodyFont = getComputedStyle(document.body).fontFamily;
+  try { await document.fonts.ready; } catch (e) {}
+  // νυχτερινός ουρανός
+  ["#0d0d26", "#141438", "#1b1c4a", "#24275a", "#312f6a"].forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * H / 5, W, H / 5 + 1); });
+  for (let i = 0; i < 90; i++) { x.fillStyle = i % 5 ? "#ffffff" : "#f2c14e"; const z = i % 3 ? 4 : 8; x.fillRect((i * 397) % W, (i * 233) % (H * .9), z, z); }
+  // εισιτήριο
+  const tx = 90, ty = 150, tw = W - 180, th = H - 260;
+  x.fillStyle = "#1a1a2e"; x.fillRect(tx - 10, ty - 10, tw + 20, th + 20);
+  x.fillStyle = "#fff4d6"; x.fillRect(tx, ty, tw, th);
+  x.fillStyle = "#1a1a2e";  // εγκοπές
+  [[tx - 10, ty + 330], [tx + tw - 50, ty + 330]].forEach(([nx, ny]) => x.fillRect(nx, ny, 60, 60));
+  x.fillStyle = "#24275a"; x.fillRect(tx - 10, ty + 340, 50, 40); x.fillRect(tx + tw - 40, ty + 340, 50, 40);
+  for (let i = tx + 70; i < tx + tw - 70; i += 36) { x.fillStyle = "#d9c99e"; x.fillRect(i, ty + 357, 18, 6); } // διάτρητη γραμμή
+  // καρδιά
+  const hs = SPRITES.heart, sc = 14, hw = hs[0].length * sc;
+  hs.forEach((row, j) => [...row].forEach((ch, i) => { if (PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(W / 2 - hw / 2 + i * sc, ty + 50 + j * sc, sc, sc); } }));
+  x.textAlign = "center"; x.fillStyle = "#d94f86";
+  x.font = `56px ${titleFont}`; x.fillText("ΡΑΝΤΕΒΟΥ", W / 2, ty + 290);
+  // στοιχεία
+  const ch = CONFIG.options.find(o => o.id === a.choice) || CONFIG.options[0];
+  const rows = [["ΠΟΤΕ", niceDate(a.date)], ["ΩΡΑ", a.time], ["ΤΙ", `${ch.emoji} ${ch.name}`], ["ΠΟΙΑ / ΠΟΙΟΣ", a.name + (a.from ? ` · ${a.from}` : "")]];
+  let yy = ty + 440;
+  rows.forEach(([k, v]) => {
+    x.textAlign = "left"; x.fillStyle = "#7a6a8a"; x.font = `26px ${titleFont}`; x.fillText(k, tx + 70, yy);
+    x.fillStyle = "#1a1a2e"; x.font = `54px ${bodyFont}`;
+    let t = v; while (x.measureText(t).width > tw - 140 && t.length > 4) t = t.slice(0, -2) + "…";
+    x.fillText(t, tx + 70, yy + 62); yy += 128;
+  });
+  // «barcode»
+  for (let i = 0; i < 46; i++) { if ((i * 7) % 3) { x.fillStyle = "#1a1a2e"; x.fillRect(tx + 70 + i * 16, ty + th - 100, (i % 4) ? 8 : 12, 64); } }
+  x.textAlign = "center"; x.fillStyle = "#ffffff"; x.font = `30px ${titleFont}`;
+  x.fillText("Μόλις κανονίσαμε το ραντεβού μας! ❤", W / 2, 96);
+  x.font = `26px ${bodyFont}`; x.fillStyle = "#c9c3e6"; x.fillText("nikodhmos.github.io/rantevou", W / 2, H - 40);
+  return c;
+}
+async function shareTicket(a, btn) {
+  const old = btn.textContent; btn.disabled = true; btn.textContent = "...";
+  try {
+    const c = await makeTicket(a);
+    const blob = await new Promise(r => c.toBlob(r, "image/png"));
+    const file = new File([blob], "rantevou-eisitirio.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "Το εισιτήριο του ραντεβού μας 💕" }); } catch (e) {}
+    } else {
+      const url = URL.createObjectURL(blob), l = document.createElement("a");
+      l.href = url; l.download = file.name; document.body.appendChild(l); l.click(); l.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+  } catch (e) { alertNote(btn, "δεν έγινε 😬"); }
+  btn.disabled = false; btn.textContent = old;
+}
+function alertNote(btn, t) { const n = document.createElement("small"); n.textContent = " " + t; btn.after(n); setTimeout(() => n.remove(), 3000); }
+$("ticketBtn").onclick = e => { const a = store.get(); if (a) shareTicket(a, e.currentTarget); };
+$("againTicket").onclick = e => { const a = store.get(); if (a) shareTicket(a, e.currentTarget); };
+
+/* ---------- αντίστροφη μέτρηση όταν ξανανοίγει το link ---------- */
+let cdTimer = 0;
+function renderCountdown(a) {
+  const ms = whenOf(a) - new Date(), box = $("countdown");
+  box.innerHTML = "";
+  if (ms <= 0) { $("againLead").textContent = ""; box.innerHTML = '<p class="now">Ώρα για ραντεβού! 💕</p>'; return; }
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60;
+  $("againLead").textContent = d === 0 && h < 1 ? "Το ραντεβού μας είναι σε λίγο!" : "Το ραντεβού μας είναι σε";
+  [[d, d === 1 ? "μέρα" : "μέρες"], [h, h === 1 ? "ώρα" : "ώρες"], [m, "λεπτά"]].forEach(([v, l], i) => {
+    if (i === 0 && d === 0) return;
+    const el = document.createElement("div"); el.className = "cd";
+    const b = document.createElement("b"); b.textContent = v; const sm = document.createElement("small"); sm.textContent = l;
+    el.append(b, sm); box.appendChild(el);
+  });
+}
+function showAgain(a) {
+  fillSummary($("againSum"), { ...a, choice: CONFIG.options.find(o => o.id === a.choice) || CONFIG.options[0] });
+  renderCountdown(a);
+  clearInterval(cdTimer); cdTimer = setInterval(() => $("s-again").classList.contains("active") ? renderCountdown(a) : clearInterval(cdTimer), 30000);
+  show("s-again");
+}
+function prefill(a) {
+  const ch = CONFIG.options.find(o => o.id === a.choice) || CONFIG.options[0];
+  state.choice = ch; buildTimeChips(ch.times); $("msg").placeholder = ch.hint;
+  $("placeLabel").textContent = `${ch.emoji} ${ch.name}`;
+  $("name").value = a.name || ""; $("from").value = a.from || ""; $("msg").value = a.msg || "";
+  dateIn.value = a.date; timeIn.value = a.time; setTime(toMin(a.time));
+  sentOnce = true; $("send").textContent = "ΣΤΕΙΛΕ ΤΗΝ ΑΛΛΑΓΗ 💌";
+}
+$("againChange").onclick = () => { const a = store.get(); if (!a) return; unlockAudio(); prefill(a); show("s-when"); };
+$("againIntro").onclick = () => { clearInterval(cdTimer); show("s-intro"); };
+(() => { const a = store.get(); if (a && a.date && whenOf(a) > new Date(Date.now() - 6 * 36e5)) showAgain(a); })();
+
+/* ---------- προσωπικό μήνυμα από το link ---------- */
+function showLetter() {
+  if (!DEST.note) return;
+  $("letterText").textContent = "«" + DEST.note + "»";
+  $("letterFrom").textContent = DEST.f || "";
+  $("letter").classList.remove("hidden");
+}
+destReady.then(showLetter);
 
 </script>
 </body>
