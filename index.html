@@ -230,6 +230,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 #timeChips,#minChips{justify-content:center}
 .chip:disabled{opacity:.35; cursor:not-allowed}
 .err.soft{color:#7a6a8a; min-height:0}
+#time{font-size:26px; text-align:center}
 </style>
 </head>
 <body>
@@ -288,25 +289,11 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
         <input type="date" id="date">
       </label>
       <div class="chips" id="dateChips"></div>
-      <label>Ώρα</label>
-      <div class="clock" aria-label="Ώρα">
-        <div class="dial">
-          <button type="button" class="arrow" data-h="1" aria-label="μία ώρα μετά">▲</button>
-          <span class="digits" id="hh">21</span>
-          <button type="button" class="arrow" data-h="-1" aria-label="μία ώρα πριν">▼</button>
-        </div>
-        <span class="colon">:</span>
-        <div class="dial">
-          <button type="button" class="arrow" data-m="5" aria-label="5 λεπτά μετά">▲</button>
-          <span class="digits" id="mm">00</span>
-          <button type="button" class="arrow" data-m="-5" aria-label="5 λεπτά πριν">▼</button>
-        </div>
-      </div>
-      <p class="qlabel">ή πάτα κατευθείαν:</p>
+      <label>Ώρα <small>(πάτα πάνω για άλλη ώρα)</small>
+        <input type="time" id="time" value="21:00" step="300">
+      </label>
       <div class="chips" id="timeChips"></div>
-      <div class="chips" id="minChips"></div>
       <p class="err soft" id="timeNote"></p>
-      <input type="hidden" id="time" value="21:00">
       <label>Κάτι άλλο; <small>(προαιρετικό)</small>
         <textarea id="msg" rows="2" maxlength="300" placeholder="π.χ. θέλω λαδόκολλα 🥙"></textarea>
       </label>
@@ -341,8 +328,8 @@ const CONFIG = {
   // Προαιρετικό: κινητό για έτοιμο SMS στο τέλος (κενό = μόνο ειδοποίηση ntfy)
   phone: "",
   options: [
-    { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο" },
-    { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό" },
+    { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", times: ["13:00", "14:00", "15:00"], def: "14:00" },
+    { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", times: ["21:00", "22:00", "23:00"], def: "21:00" },
   ],
   music: {
     // George Michael – Careless Whisper (επίσημο YouTube)
@@ -657,6 +644,7 @@ CONFIG.options.forEach(p => {
   b.innerHTML = `<canvas data-sprite="${p.sprite}" data-scale="8"></canvas><span class="big">${p.name}</span><small>${p.sub || ""}</small>`;
   b.onclick = () => {
     state.choice = p; beep(784, .08); beep(1047, .1, .08); buzz(20);
+    buildTimeChips(p.times); setTime(toMin(p.def));
     confetti(20);
     $("placeLabel").textContent = `${p.emoji} ${p.name}`;
     show("s-when");
@@ -686,62 +674,42 @@ function makeChips(el, items, input) {
   });
 }
 makeChips($("dateChips"), dateOpts.map(([l, off]) => { const d = new Date(today); d.setDate(d.getDate() + off); return [l, iso(d)]; }), dateIn);
-/* ώρα: ▲▼ (1 ώρα / 5 λεπτά) ή γρήγορα κουμπιά. Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
+/* ώρα: γρήγορα κουμπιά ανάλογα με την επιλογή, ή πατάς πάνω στην ώρα για όποια θες.
+   Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
 const toMin = v => { const [h, m] = v.split(":").map(Number); return h * 60 + m; };
 const fromMin = t => `${p2(Math.floor(t / 60))}:${p2(t % 60)}`;
-function minAllowed() {               // πρώτη επιτρεπτή ώρα (λεπτά από 00:00)
+const LAST = 23 * 60 + 55;
+function minAllowed() {
   if (dateIn.value !== iso(new Date())) return 0;
   const n = new Date();
-  return Math.ceil((n.getHours() * 60 + n.getMinutes() + 1) / 5) * 5;   // επόμενο 5λεπτο
+  return Math.ceil((n.getHours() * 60 + n.getMinutes() + 1) / 5) * 5;
 }
 function setTime(t) {
   const lo = minAllowed();
-  t = Math.max(lo, Math.min(23 * 60 + 55, t));
-  if (lo > 23 * 60 + 55) t = 23 * 60 + 55;
-  timeIn.value = fromMin(t);
+  timeIn.value = fromMin(Math.min(LAST, Math.max(lo, t)));
   syncChips();
 }
-[["19:00"], ["20:00"], ["21:00"], ["22:00"]].forEach(([t]) => {
-  const c = document.createElement("button");
-  c.type = "button"; c.className = "chip"; c.textContent = t; c.dataset.v = t;
-  c.onclick = () => { setTime(toMin(t)); beep(1200, .04); buzz(10); };
-  $("timeChips").appendChild(c);
-});
-["00", "15", "30", "45"].forEach(m => {
-  const c = document.createElement("button");
-  c.type = "button"; c.className = "chip"; c.textContent = ":" + m; c.dataset.m = m;
-  c.onclick = () => { setTime(Math.floor(toMin(timeIn.value) / 60) * 60 + +m); beep(1200, .04); buzz(10); };
-  $("minChips").appendChild(c);
-});
-document.querySelectorAll(".clock .arrow").forEach(b => {
-  const step = () => {
-    if (b.disabled) return;
-    let t = toMin(timeIn.value);
-    if (b.dataset.h) t += 60 * +b.dataset.h;
-    else t = Math.round(t / 5) * 5 + +b.dataset.m;
-    if (t < 0 || t > 23 * 60 + 55) return;
-    setTime(t); beep(900 + (t % 60) * 4, .03); buzz(8);
-  };
-  // πάτημα = ένα βήμα, κράτημα = τρέχει
-  let timer = null, rpt = null;
-  const stop = () => { clearTimeout(timer); clearInterval(rpt); timer = rpt = null; };
-  b.addEventListener("pointerdown", e => { e.preventDefault(); step(); timer = setTimeout(() => rpt = setInterval(step, 110), 400); });
-  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
-  b.addEventListener("click", e => { if (e.detail === 0) step(); });   // πληκτρολόγιο
-});
+function buildTimeChips(times) {
+  const box = $("timeChips"); box.innerHTML = "";
+  times.forEach(t => {
+    const c = document.createElement("button");
+    c.type = "button"; c.className = "chip"; c.textContent = t; c.dataset.v = t;
+    c.onclick = () => { setTime(toMin(t)); beep(1200, .04); buzz(10); };
+    box.appendChild(c);
+  });
+}
+buildTimeChips(CONFIG.options[0].times);
+timeIn.addEventListener("change", () => { if (timeIn.value) setTime(toMin(timeIn.value)); });
+timeIn.addEventListener("blur", () => { if (timeIn.value) setTime(toMin(timeIn.value)); });
 function syncChips() {
   document.querySelectorAll("#dateChips .chip").forEach(c => c.classList.toggle("on", c.dataset.v === dateIn.value));
-  if ($("hh")) {
-    const t = toMin(timeIn.value), lo = minAllowed(), [h, m] = timeIn.value.split(":");
-    $("hh").textContent = h; $("mm").textContent = m;
-    document.querySelectorAll("#timeChips .chip").forEach(c => { c.classList.toggle("on", c.dataset.v === timeIn.value); c.disabled = toMin(c.dataset.v) < lo; });
-    document.querySelectorAll("#minChips .chip").forEach(c => { c.classList.toggle("on", c.dataset.m === m); c.disabled = Math.floor(t / 60) * 60 + +c.dataset.m < lo; });
-    document.querySelector('.arrow[data-h="-1"]').disabled = t - 60 < lo;
-    document.querySelector('.arrow[data-m="-5"]').disabled = t - 5 < lo;
-    document.querySelector('.arrow[data-h="1"]').disabled = t + 60 > 23 * 60 + 55;
-    document.querySelector('.arrow[data-m="5"]').disabled = t + 5 > 23 * 60 + 55;
-    $("timeNote").textContent = lo > 0 ? (lo > 23 * 60 + 55 ? "Για απόψε είναι αργά, διάλεξε άλλη μέρα 🙂" : `Για σήμερα: από ${fromMin(lo)} και μετά`) : "";
-  }
+  const lo = minAllowed();
+  timeIn.min = lo ? fromMin(Math.min(lo, LAST)) : "";
+  document.querySelectorAll("#timeChips .chip").forEach(c => {
+    c.classList.toggle("on", c.dataset.v === timeIn.value);
+    c.disabled = toMin(c.dataset.v) < lo;
+  });
+  $("timeNote").textContent = lo > 0 ? (lo > LAST ? "Για απόψε είναι αργά, διάλεξε άλλη μέρα 🙂" : `Για σήμερα: από ${fromMin(lo)} και μετά`) : "";
 }
 ["input", "change"].forEach(ev => dateIn.addEventListener(ev, () => setTime(toMin(timeIn.value))));
 syncChips();
