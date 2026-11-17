@@ -227,16 +227,9 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 #music.on .eq i:nth-child(2){animation-delay:-.2s}
 #music.on .eq i:nth-child(3){animation-delay:-.4s}
 @keyframes eq{0%{height:4px}50%{height:14px}100%{height:8px}}
-#sp{position:fixed; top:calc(var(--top) + 64px); left:12px; z-index:80; width:min(340px, calc(100vw - 24px));
-  background:var(--ink); padding:10px 10px 8px; box-shadow:0 0 0 4px var(--gold), 0 10px 0 4px rgba(0,0,0,.4)}
-/* κρυμμένο αλλά ζωντανό, για να συνεχίζει να παίζει */
-#sp:not(.show){opacity:0; pointer-events:none; transform:translateY(-200vh)}
-#sp .sp-tip{font-family:'Press Start 2P',monospace; font-size:9px; line-height:1.6; color:#fff; text-align:center; margin:0 26px 8px}
-#sp iframe{width:100%; aspect-ratio:16/9; height:auto; border:0; display:block; background:#000}
-#sp .sp-row{display:flex; gap:8px; margin-top:8px}
-#sp .sp-b{flex:1; font-family:'Press Start 2P',monospace; font-size:8px; line-height:1.4; padding:9px 4px; border:none; background:#3b3355; color:#fff; text-align:center; text-decoration:none; box-shadow:0 0 0 2px var(--gold); cursor:pointer}
-#sp .sp-x{position:absolute; top:-14px; right:-14px; width:30px; height:30px; border:none; background:var(--red); color:#fff;
-  font-family:'Press Start 2P',monospace; font-size:12px; box-shadow:0 0 0 3px var(--ink); cursor:pointer}
+/* κρυφός player του YouTube: δεν φαίνεται, μόνο ακούγεται */
+#ytwrap{position:fixed; left:0; bottom:0; width:200px; height:200px; opacity:.01; pointer-events:none; z-index:-5}
+#ytwrap iframe{width:200px; height:200px; border:0; display:block}
 #music.nudge{animation:nudge .5s steps(2) infinite; --c:var(--gold2)}
 @keyframes nudge{50%{transform:scale(1.15)}}
 
@@ -302,7 +295,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 <canvas id="moon" data-sprite="moon" data-scale="6"></canvas>
 <div class="sea"></div>
 <button class="btn ghost small" id="music" type="button" aria-label="Μουσική"><span class="eq"><i></i><i></i><i></i></span><span id="musicLabel">♫</span></button>
-<div id="sp" role="dialog" aria-label="Careless Whisper"><button class="sp-x" id="spX" type="button" aria-label="Κλείσε">×</button><p class="sp-tip">🎷 αν δεν παίζει, πάτα ▶</p><div id="spSlot"></div><div class="sp-row"><button class="sp-b" id="spRe" type="button">↻ ΞΑΝΑ</button><a class="sp-b" id="spApp" target="_blank" rel="noopener">ΣΤΟ YOUTUBE ↗</a></div></div>
+<div id="ytwrap" aria-hidden="true"><div id="ytp"></div></div>
 
 <main class="box">
 
@@ -573,23 +566,27 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 /* ---------- ήχοι: κανένας 8-bit ήχος, μόνο το τραγούδι από το YouTube ---------- */
 const unlockAudio = () => {}, beep = () => {}, jingle = () => {};
 
-/* ---------- μουσική: επίσημο βίντεο YouTube ---------- */
-const musicBtn = $("music"), sp = $("sp"), YT = CONFIG.music.youtube;
-let spLoaded = false;
-const spSrc = () => "https://www.youtube.com/embed/" + YT + "?autoplay=1&playsinline=1&rel=0&loop=1&playlist=" + YT;
-$("spApp").href = "https://www.youtube.com/watch?v=" + YT;
-function loadPlayer() {
-  if (spLoaded) return; spLoaded = true;
-  const f = document.createElement("iframe");
-  f.id = "spFrame"; f.src = spSrc(); f.title = "Careless Whisper";
-  f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-  $("spSlot").appendChild(f);
+/* ---------- μουσική: επίσημο βίντεο YouTube, κρυφό (μόνο ήχος) ---------- */
+const musicBtn = $("music"), YTID = CONFIG.music.youtube;
+let ytp = null, ytReady = false, wantPlay = false, playing = false;
+window.onYouTubeIframeAPIReady = () => {
+  ytp = new YT.Player("ytp", {
+    width: 200, height: 200, videoId: YTID,
+    playerVars: { playsinline: 1, rel: 0, controls: 0, loop: 1, playlist: YTID },
+    events: {
+      onReady: () => { ytReady = true; if (wantPlay) ytp.playVideo(); },
+      onStateChange: e => { playing = e.data === 1 || e.data === 3; updateMusicBtn(); },
+    },
+  });
+};
+{ const t = document.createElement("script"); t.src = "https://www.youtube.com/iframe_api"; t.async = true; document.head.appendChild(t); }
+function playMusic() { wantPlay = true; if (ytReady) { ytp.unMute(); ytp.playVideo(); } updateMusicBtn(); }
+function pauseMusic() { wantPlay = false; if (ytReady) ytp.pauseVideo(); updateMusicBtn(); }
+function updateMusicBtn() {
+  musicBtn.classList.toggle("on", playing);
+  if (playing) musicBtn.classList.remove("nudge");
 }
-$("spRe").onclick = () => { buzz(10); const f = $("spFrame"); if (f) f.src = spSrc(); else loadPlayer(); };
-function openPlayer() { loadPlayer(); sp.classList.add("show"); musicBtn.classList.remove("nudge"); musicBtn.classList.add("on"); }
-function closePlayer() { sp.classList.remove("show"); }
-musicBtn.onclick = () => { buzz(15); sp.classList.contains("show") ? closePlayer() : openPlayer(); };
-$("spX").onclick = () => { buzz(10); closePlayer(); };
+musicBtn.onclick = () => { buzz(15); playing ? pauseMusic() : playMusic(); };
 
 /* ---------- οθόνες ---------- */
 const state = { choice: null, noCount: 0 };
@@ -607,7 +604,8 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let opening = false;
 openBtn.onclick = () => {
   if (opening) return; opening = true;
-  unlockAudio(); if (!spLoaded) openPlayer();
+  unlockAudio(); playMusic();
+  setTimeout(() => { if (!playing) musicBtn.classList.add("nudge"); }, 4000);
   setTimeout(() => { beep(523, .08); beep(784, .12, .08); }, 30);
   buzz(20);
   if (RM) { show("s-ask"); return; }
@@ -685,7 +683,7 @@ function dodge(px, py, force) {
   yes.style.setProperty("--s", Math.min(1 + state.noCount * .07, 1.6).toFixed(2));
 
   const nr = no.getBoundingClientRect();
-  const avoid = [yes, document.querySelector("#s-ask h1"), musicBtn, ...(sp.classList.contains("show") ? [sp] : [])].map(el => el.getBoundingClientRect());
+  const avoid = [yes, document.querySelector("#s-ask h1"), musicBtn].map(el => el.getBoundingClientRect());
   const hits = (x, y) => avoid.some(a => x < a.right + 14 && x + nr.width > a.left - 14 && y < a.bottom + 14 && y + nr.height > a.top - 14);
   const W = innerWidth, H = innerHeight, pad = 12;
   const far = Math.min(200, Math.min(W, H) / 3);
