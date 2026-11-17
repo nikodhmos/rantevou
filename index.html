@@ -6,16 +6,22 @@
 <title>Ραντεβού; 💕</title>
 <meta name="description" content="Θες να πάμε ραντεβού;">
 <meta property="og:title" content="Έχεις μια πρόσκληση 💌">
-<meta property="og:description" content="Πάτα να την ανοίξεις.">
+<meta property="og:description" content="Πάτα για να απαντήσεις 💕">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nikodhmos.github.io/rantevou/">
 <meta property="og:image" content="https://nikodhmos.github.io/rantevou/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Pixel φάκελος και καρδιά: Έχεις μια πρόσκληση!">
+<meta property="og:site_name" content="Ραντεβού">
+<meta property="og:locale" content="el_GR">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Έχεις μια πρόσκληση 💌">
+<meta name="twitter:image" content="https://nikodhmos.github.io/rantevou/og.png">
 <meta name="theme-color" content="#0d0d26">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Tiny5&display=swap" rel="stylesheet">
@@ -245,6 +251,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 .sec label:first-of-type{margin-top:8px}
 .sec textarea{margin-top:10px; width:100%}
 .confirm .cq{font-size:24px; margin:10px 0 0}
+.linkbtn{background:none; border:0; padding:0; margin:0; font:inherit; color:var(--blue); text-decoration:underline; cursor:pointer}
 #changeMind{color:var(--pink2)}
 .tsel{display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 4px}
 .tsel select{font-family:'Press Start 2P',monospace; font-size:26px; color:var(--ink); background:#fff;
@@ -298,7 +305,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
   <section class="screen" id="s-when">
     <div id="whenHead">
       <p class="ok">Ωραία, άσ' το πάνω μου 😎</p>
-      <p class="sub"><b id="placeLabel"></b> · <a href="#" id="changePlace">αλλαγή</a></p>
+      <p class="sub"><b id="placeLabel"></b> · <button type="button" class="linkbtn" id="changePlace">αλλαγή</button></p>
     </div>
     <form id="form" novalidate>
       <div class="sec">
@@ -353,9 +360,8 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
     <p class="note" id="doneNote"></p>
     <div class="btns">
       <a class="btn blue small" id="cal" target="_blank" rel="noopener">📅 ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ</a>
-      <a class="btn yes small hidden" id="sms">📱 ΣΤΕΙΛΕ ΜΟΥ SMS</a>
     </div>
-    <p class="note"><a href="#" id="changeMind">↺ άλλαξα γνώμη</a></p>
+    <p class="note"><button type="button" class="linkbtn" id="changeMind">↺ άλλαξα γνώμη</button></p>
   </section>
 
 </main>
@@ -910,7 +916,7 @@ $("confirmYes").onclick = async () => {
   $("doneNote").textContent = note;
   $("cal").href = calLink(d);
   const sms = $("sms");
-  if (usePhone) {
+  if (usePhone && sms) {
     sms.href = smsLink(d); sms.classList.remove("hidden");
     sms.target = DEST.p && DEST.m === "w" ? "_blank" : "";
     sms.textContent = DEST.p && DEST.m === "w" ? "💬 ΣΤΕΙΛΕ ΜΟΥ ΣΤΟ WHATSAPP" : "📱 ΣΤΕΙΛΕ ΜΟΥ SMS";
