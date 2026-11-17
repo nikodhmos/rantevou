@@ -213,6 +213,18 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
   box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #e4dccb}
 .summary b{color:var(--pink2)}
 .hidden{display:none !important}
+/* ---------- ρολόι ---------- */
+.clock{display:flex; align-items:center; justify-content:center; gap:10px; margin:14px 0 4px}
+.dial{display:flex; flex-direction:column; align-items:center; gap:8px}
+.dial .digits{font-family:'Press Start 2P',monospace; font-size:34px; line-height:1; color:var(--ink);
+  background:#fff; padding:14px 12px; min-width:96px; text-align:center;
+  box-shadow:0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset -4px -4px 0 #e4dccb}
+.clock .colon{font-family:'Press Start 2P',monospace; font-size:34px; color:var(--ink); animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.arrow{font-family:'Press Start 2P',monospace; font-size:18px; width:96px; height:52px; border:0; cursor:pointer;
+  color:#fff; background:var(--pink2); touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  box-shadow:0 -3px 0 var(--ink), 0 3px 0 var(--ink), -3px 0 0 var(--ink), 3px 0 0 var(--ink), inset -3px -3px 0 #a83a66}
+.arrow:active{transform:translateY(2px); filter:brightness(.92)}
 </style>
 </head>
 <body>
@@ -264,16 +276,31 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
       <label>Όνομα
         <input id="name" maxlength="40" placeholder="πώς σε λένε;" autocomplete="given-name" enterkeyhint="next">
       </label>
+      <label>Από πού είσαι;
+        <input id="from" maxlength="40" placeholder="π.χ. Θεσσαλονίκη" autocomplete="address-level2" enterkeyhint="next">
+      </label>
       <label>Μέρα
         <input type="date" id="date">
       </label>
       <div class="chips" id="dateChips"></div>
-      <label>Ώρα
-        <input type="time" id="time" value="21:00">
-      </label>
+      <label>Ώρα</label>
+      <div class="clock" aria-label="Ώρα">
+        <div class="dial">
+          <button type="button" class="arrow" data-h="1" aria-label="μία ώρα μετά">▲</button>
+          <span class="digits" id="hh">21</span>
+          <button type="button" class="arrow" data-h="-1" aria-label="μία ώρα πριν">▼</button>
+        </div>
+        <span class="colon">:</span>
+        <div class="dial">
+          <button type="button" class="arrow" data-m="15" aria-label="15 λεπτά μετά">▲</button>
+          <span class="digits" id="mm">00</span>
+          <button type="button" class="arrow" data-m="-15" aria-label="15 λεπτά πριν">▼</button>
+        </div>
+      </div>
+      <input type="hidden" id="time" value="21:00">
       <div class="chips" id="timeChips"></div>
       <label>Κάτι άλλο; <small>(προαιρετικό)</small>
-        <textarea id="msg" rows="2" maxlength="300" placeholder="π.χ. θέλω σουσάκι 🍣"></textarea>
+        <textarea id="msg" rows="2" maxlength="300" placeholder="π.χ. θέλω λαδόκολλα 🥙"></textarea>
       </label>
       <button class="btn wide yes" type="submit" id="send">ΚΛΕΙΣΤΗΚΕ 💌</button>
       <p class="err" id="err"></p>
@@ -653,13 +680,41 @@ function makeChips(el, items, input) {
 }
 makeChips($("dateChips"), dateOpts.map(([l, off]) => { const d = new Date(today); d.setDate(d.getDate() + off); return [l, iso(d)]; }), dateIn);
 makeChips($("timeChips"), CONFIG.times.map(t => [t, t]), timeIn);
+
+/* ρολόι: ▲▼ για ώρα και λεπτά (ανά 15') */
+function setTime(totalMin) {
+  totalMin = ((totalMin % 1440) + 1440) % 1440;
+  timeIn.value = `${p2(Math.floor(totalMin / 60))}:${p2(totalMin % 60)}`;
+  syncChips();
+}
+function showClock() {
+  const [h, m] = timeIn.value.split(":");
+  $("hh").textContent = h; $("mm").textContent = m;
+}
+document.querySelectorAll(".clock .arrow").forEach(b => {
+  const step = () => {
+    const [h, m] = timeIn.value.split(":").map(Number);
+    let t = h * 60 + m;
+    if (b.dataset.h) t += 60 * +b.dataset.h;
+    else { t = Math.round(t / 15) * 15 + +b.dataset.m; }
+    setTime(t); beep(900 + (t % 60) * 4, .03); buzz(8);
+  };
+  // πάτημα = ένα βήμα, κράτημα = τρέχει
+  let timer = null, rep = null;
+  const stop = () => { clearTimeout(timer); clearInterval(rep); timer = rep = null; };
+  b.addEventListener("pointerdown", e => { e.preventDefault(); step(); timer = setTimeout(() => rep = setInterval(step, 120), 400); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener("click", e => { if (e.detail === 0) step(); });   // πληκτρολόγιο
+});
 function syncChips() {
   document.querySelectorAll("#dateChips .chip").forEach(c => c.classList.toggle("on", c.dataset.v === dateIn.value));
   document.querySelectorAll("#timeChips .chip").forEach(c => c.classList.toggle("on", c.dataset.v === timeIn.value));
+  if ($("hh")) showClock();
 }
 ["input", "change"].forEach(ev => { dateIn.addEventListener(ev, syncChips); timeIn.addEventListener(ev, syncChips); });
 syncChips();
-$("name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("name").blur(); } });
+$("name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("from").focus(); } });
+$("from").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("from").blur(); } });
 
 function niceDate(v) {
   const [Y, M, D] = v.split("-").map(Number);
@@ -679,6 +734,7 @@ function calLink(d) {
 function textFor(d) {
   return `💕 ΝΑΙ στο ραντεβού!\n` +
     `Όνομα: ${d.name}\n` +
+    `Από: ${d.from}\n` +
     `Επιλογή: ${d.choice.emoji} ${d.choice.name}\n` +
     `Μέρα: ${niceDate(d.date)}\n` +
     `Ώρα: ${d.time}` +
@@ -696,7 +752,7 @@ async function apiSend(payload) {
   if (!res.ok || !j.ok) throw new Error(j.error || "HTTP " + res.status);
 }
 async function notify(d) {
-  await apiSend({ kind: "rantevou", c: DEST.c || undefined, r: DEST.t || undefined, name: d.name, date: d.date, time: d.time,
+  await apiSend({ kind: "rantevou", c: DEST.c || undefined, r: DEST.t || undefined, name: d.name, from: d.from, date: d.date, time: d.time,
     msg: d.msg, choice: d.choice.id, noCount: state.noCount });
 }
 function smsLink(d) {
@@ -712,7 +768,7 @@ async function sendMail(d) {
     body: JSON.stringify({
       _subject: `💕 ${d.name} → ${d.choice.emoji} ${d.choice.name} · ${niceDate(d.date)} ${d.time}`,
       _template: "table", _captcha: "false",
-      "Όνομα": d.name, "Επιλογή": `${d.choice.emoji} ${d.choice.name}`, "Μέρα": niceDate(d.date), "Ώρα": d.time,
+      "Όνομα": d.name, "Από": d.from, "Επιλογή": `${d.choice.emoji} ${d.choice.name}`, "Μέρα": niceDate(d.date), "Ώρα": d.time,
       "Μήνυμα": d.msg || "-", "Προσπάθειες να πατήσει το ΟΧΙ": String(state.noCount),
     }),
   });
@@ -725,9 +781,10 @@ $("form").addEventListener("submit", async e => {
   await destReady;
   document.activeElement && document.activeElement.blur();
   const err = $("err"), send = $("send");
-  const d = { name: $("name").value.trim(), date: dateIn.value, time: timeIn.value, msg: $("msg").value.trim(), choice: state.choice };
+  const d = { name: $("name").value.trim(), from: $("from").value.trim(), date: dateIn.value, time: timeIn.value, msg: $("msg").value.trim(), choice: state.choice };
   const fail = m => { err.textContent = m; beep(150, .2); buzz([60, 40, 60]); };
   if (!d.name) { fail("Γράψε το όνομά σου!"); return; }
+  if (!d.from) { fail("Πες μου από πού είσαι!"); return; }
   if (!d.date) { fail("Διάλεξε μέρα!"); return; }
   if (d.date < iso(today)) { fail("Στο παρελθόν δεν πάμε (ακόμα)"); return; }
   if (!d.time) { fail("Διάλεξε ώρα!"); return; }
@@ -753,7 +810,7 @@ $("form").addEventListener("submit", async e => {
 
   const sm = $("summary");
   sm.innerHTML = "";
-  [["💕 ", d.name], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
+  [["💕 ", d.name], ["📍 ", d.from], ["", `${d.choice.emoji} ${d.choice.name}`], ["📅 ", niceDate(d.date)], ["🕘 ", d.time]].forEach(([pre, val], i) => {
     if (i) sm.append(document.createElement("br"));
     const b = document.createElement("b"); b.textContent = val; sm.append(pre, b);
   });

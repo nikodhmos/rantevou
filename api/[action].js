@@ -195,7 +195,7 @@ module.exports = async (req, res) => {
       } else topic = body.r ? await unseal(env, body.r) : env.NTFY_TOPIC;
       if (!topic) return json({ ok: false, error: "bad link" }, 400);
 
-      const name = clean(body.name, 40), msg = clean(body.msg, 300);
+      const name = clean(body.name, 40), msg = clean(body.msg, 300), from = clean(body.from, 40);
       const date = clean(body.date, 10), time = clean(body.time, 5);
       const tries = Math.max(0, Math.min(999, parseInt(body.noCount, 10) || 0));
       if (!name) return json({ ok: false, error: "Γράψε όνομα" }, 400);
@@ -206,8 +206,10 @@ module.exports = async (req, res) => {
       if (body.kind === "rantevou") {
         const choice = RANTEVOU[body.choice];
         if (!choice) return json({ ok: false, error: "Λάθος επιλογή" }, 400);
-        title = `💕 ${name} → ${choice} · ${niceDate(date)} ${time}`;
-        lines = [`Όνομα: ${name}`, `Επιλογή: ${choice}`];
+        title = `💕 ${name}${from ? ` (${from})` : ""} → ${choice} · ${niceDate(date)} ${time}`;
+        lines = [`Όνομα: ${name}`];
+        if (from) lines.push(`Από: ${from}`);
+        lines.push(`Επιλογή: ${choice}`);
       } else if (body.kind === "retsines") {
         const dr = DRINKS[body.drink];
         if (!dr || !dr.places.includes(body.place)) return json({ ok: false, error: "Λάθος επιλογή" }, 400);
