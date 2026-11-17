@@ -813,7 +813,8 @@ function minAllowed() {
   let lo = optFrom();
   if (dateIn.value === iso(new Date())) {
     const n = new Date();
-    lo = Math.max(lo, Math.ceil((n.getHours() * 60 + n.getMinutes()) / 5) * 5);   // από τώρα (στρογγυλεμένο στο 5λεπτο)
+    // για σήμερα: τουλάχιστον μισή ώρα από τώρα, σε «στρογγυλή» ώρα (:00, :15, :30, :45)
+    lo = Math.max(lo, Math.ceil((n.getHours() * 60 + n.getMinutes() + 30) / 15) * 15);
   }
   return lo;
 }
