@@ -5,7 +5,7 @@ const ORIGINS = ["https://nikodhmos.github.io"];
 
 const RANTEVOU = { food: "🍝 ΦΑΓΗΤΟ", meze: "🫒 ΜΕΖΕΔΕΣ", drink: "🍸 ΠΟΤΟ" };
 // λογικές ώρες ανά επιλογή (ίδιες με τη σελίδα)
-const RANTEVOU_HOURS = { food: ["12:00", "23:55"], meze: ["13:00", "23:55"], drink: ["19:00", "23:55"] };
+const RANTEVOU_HOURS = { food: ["12:00", "23:55"], meze: ["12:00", "23:55"], drink: ["19:00", "23:55"] };
 const DRINKS = {
   krasi:    { label: "🍷 Κρασί",    places: ["bit", "rotonda"] },
   mpyra:    { label: "🍺 Μπύρα",    places: ["lefkos", "magkazi"] },
