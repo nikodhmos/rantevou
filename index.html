@@ -120,18 +120,18 @@ h2{font-size:clamp(16px,5vw,22px); margin:6px 0 4px}
 .note small{display:block; font-size:14px; color:#a08a9a; margin-top:4px; word-break:break-word}
 
 /* ---------- μέρη ---------- */
-.places{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin:24px 6px 8px}
+.places{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:24px 4px 8px}
 .place{
   background:#fff; border:none; border-radius:0; cursor:pointer; padding:18px 6px 14px;
-  font-family:'Press Start 2P',monospace; font-size:14px; color:var(--ink);
-  display:flex; flex-direction:column; align-items:center; gap:12px;
+  font-family:'Press Start 2P',monospace; font-size:11px; color:var(--ink); min-width:0;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
   box-shadow:0 -5px 0 var(--ink), 0 5px 0 var(--ink), -5px 0 0 var(--ink), 5px 0 0 var(--ink), inset -5px -5px 0 #e4dccb, 0 10px 0 rgba(0,0,0,.25);
   transition:transform .12s steps(2), background .12s steps(2);
 }
-.place canvas{height:84px; width:auto}
+.place canvas{height:64px; width:auto; max-width:100%}
 .place:active,.place:focus-visible{transform:translateY(-6px); background:#fff7dc; outline:none}
 @media (hover:hover){ .place:hover{transform:translateY(-6px); background:#fff7dc} .place:hover canvas{animation:bob .8s steps(2) infinite} }
-.place small{font-family:'Tiny5',monospace; font-size:18px; color:#7a6a8a}
+.place small{font-family:'Tiny5',monospace; font-size:15px; line-height:1.1; color:#7a6a8a; text-align:center}
 
 /* ---------- φόρμα ---------- */
 form{text-align:left; margin-top:4px}
@@ -212,7 +212,8 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 @media (min-width:600px){
   .box{padding:30px 26px 26px}
   #moon{width:60px; height:60px; right:7%}
-  .place canvas{height:96px}
+  .place canvas{height:84px}
+  .place{font-size:13px}
   #s-done .btns{flex-direction:row}
 }
 
@@ -421,8 +422,9 @@ const CONFIG = {
   // Προαιρετικό: κινητό για έτοιμο SMS στο τέλος (κενό = μόνο ειδοποίηση ntfy)
   phone: "",
   options: [
-    { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", hint: "π.χ. θέλω λαδόκολλα 🥙", times: ["13:00", "14:00", "15:00"], def: "14:00" },
-    { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", hint: "π.χ. ένα κοκτέιλ με θέα 🍹", times: ["21:00", "22:00", "23:00"], def: "21:00" },
+    { id: "food",  name: "ΦΑΓΗΤΟ", emoji: "🍝", sprite: "pasta",    sub: "κάτι νόστιμο", hint: "π.χ. θέλω λαδόκολλα 🥙", times: ["13:00", "14:00", "15:00"], def: "14:00", from: "12:00", to: "23:55" },
+    { id: "meze",  name: "ΜΕΖΕΔΕΣ", emoji: "🫒", sprite: "meze",   sub: "κάτι χαλαρό", hint: "π.χ. τσιπουράκι με χταποδάκι 🐙", times: ["19:00", "20:00", "21:00"], def: "20:00", from: "13:00", to: "23:55" },
+    { id: "drink", name: "ΠΟΤΟ",   emoji: "🍸", sprite: "cocktail", sub: "κάτι δροσερό", hint: "π.χ. ένα κοκτέιλ με θέα 🍹", times: ["21:00", "22:00", "23:00"], def: "21:00", from: "19:00", to: "23:55" },
   ],
   music: { youtube: "izGwDsrQ1eQ" },   // Careless Whisper — επίσημο βίντεο στο YouTube
 };
@@ -521,6 +523,20 @@ const SPRITES = {
     ".....kk.....",
     ".....kk.....",
     "...kkkkkk...",
+  ],
+  meze: [
+    "..........kk..",
+    "..........kgk.",
+    "..........kck.",
+    "...kkkkk..kck.",
+    "..kwwwwwk.kkk.",
+    ".kwwrrwwwk....",
+    "kwwrRrGGwwk...",
+    "kwwwkwwGkwk...",
+    "kwkkwweeewwk..",
+    ".kwwwweeewk...",
+    "..kkwwwwwkk...",
+    "....kkkkk.....",
   ],
   moon: [
     "...mmmm...",
@@ -789,15 +805,20 @@ $("dSel").addEventListener("change", () => {
    Για «σήμερα» δεν αφήνει ώρα που πέρασε. */
 const toMin = v => { const [h, m] = v.split(":").map(Number); return h * 60 + m; };
 const fromMin = t => `${p2(Math.floor(t / 60))}:${p2(t % 60)}`;
-const LAST = 23 * 60 + 55;
+// κάθε επιλογή έχει λογικές ώρες (π.χ. ποτό μόνο βραδάκι)
+const optFrom = () => toMin((state.choice || CONFIG.options[0]).from || "00:00");
+const optTo = () => toMin((state.choice || CONFIG.options[0]).to || "23:55");
 function minAllowed() {
-  if (dateIn.value !== iso(new Date())) return 0;
-  const n = new Date();
-  return Math.ceil((n.getHours() * 60 + n.getMinutes()) / 5) * 5;   // από τώρα (στρογγυλεμένο στο 5λεπτο)
+  let lo = optFrom();
+  if (dateIn.value === iso(new Date())) {
+    const n = new Date();
+    lo = Math.max(lo, Math.ceil((n.getHours() * 60 + n.getMinutes()) / 5) * 5);   // από τώρα (στρογγυλεμένο στο 5λεπτο)
+  }
+  return lo;
 }
 function setTime(t) {
   const lo = minAllowed();
-  timeIn.value = fromMin(Math.min(LAST, Math.max(lo, t)));
+  timeIn.value = fromMin(Math.min(optTo(), Math.max(lo, t)));
   syncChips();
 }
 function buildTimeChips(times) {
@@ -826,13 +847,13 @@ function syncChips() {
   const lo = minAllowed();
   const [sh, sm] = timeIn.value.split(":").map(Number);
   $("hSel").value = sh; $("mSel").value = sm - (sm % 5);
-  [...$("hSel").options].forEach(o => o.disabled = +o.value * 60 + 55 < lo);
-  [...$("mSel").options].forEach(o => o.disabled = sh * 60 + +o.value < lo);
+  [...$("hSel").options].forEach(o => { const out = +o.value * 60 + 55 < optFrom() || +o.value * 60 > optTo(); o.hidden = out; o.disabled = out || +o.value * 60 + 55 < lo; });
+  [...$("mSel").options].forEach(o => o.disabled = sh * 60 + +o.value < lo || sh * 60 + +o.value > optTo());
   document.querySelectorAll("#timeChips .chip").forEach(c => {
     c.classList.toggle("on", c.dataset.v === timeIn.value);
     c.disabled = toMin(c.dataset.v) < lo;
   });
-  $("timeNote").textContent = lo > 0 ? (lo > LAST ? "Για σήμερα είναι αργά, διάλεξε άλλη μέρα 🙂" : `Για σήμερα: από ${fromMin(lo)} και μετά`) : "";
+  $("timeNote").textContent = lo > optTo() ? "Για σήμερα είναι αργά, διάλεξε άλλη μέρα 🙂" : lo > optFrom() ? `Για σήμερα: από ${fromMin(lo)} και μετά` : "";
 }
 ["input", "change"].forEach(ev => dateIn.addEventListener(ev, () => setTime(toMin(timeIn.value))));
 syncChips();
@@ -909,6 +930,7 @@ $("form").addEventListener("submit", async e => {
   if (!d.name) { fail("Γράψε το όνομά σου!"); return; }
   if (!d.from) { fail("Πες μου από πού είσαι!"); return; }
   if (toMin(d.time) < minAllowed()) { setTime(toMin(d.time)); fail("Αυτή η ώρα πέρασε, διάλεξε αργότερα"); return; }
+  if (toMin(d.time) > optTo()) { setTime(toMin(d.time)); fail("Διάλεξε ώρα μέχρι " + fromMin(optTo())); return; }
   if (!d.date) { fail("Διάλεξε μέρα!"); return; }
   if (d.date < iso(today)) { fail("Στο παρελθόν δεν πάμε (ακόμα)"); return; }
   if (!d.time) { fail("Διάλεξε ώρα!"); return; }

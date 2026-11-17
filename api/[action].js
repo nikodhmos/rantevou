@@ -3,7 +3,9 @@
 // Env vars στο Vercel: NTFY_TOPIC, KEY (secrets) + Upstash Redis (για τα κοντά links).
 const ORIGINS = ["https://nikodhmos.github.io"];
 
-const RANTEVOU = { food: "🍝 ΦΑΓΗΤΟ", drink: "🍸 ΠΟΤΟ" };
+const RANTEVOU = { food: "🍝 ΦΑΓΗΤΟ", meze: "🫒 ΜΕΖΕΔΕΣ", drink: "🍸 ΠΟΤΟ" };
+// λογικές ώρες ανά επιλογή (ίδιες με τη σελίδα)
+const RANTEVOU_HOURS = { food: ["12:00", "23:55"], meze: ["13:00", "23:55"], drink: ["19:00", "23:55"] };
 const DRINKS = {
   krasi:    { label: "🍷 Κρασί",    places: ["bit", "rotonda"] },
   mpyra:    { label: "🍺 Μπύρα",    places: ["lefkos", "magkazi"] },
@@ -213,6 +215,8 @@ module.exports = async (req, res) => {
       if (body.kind === "rantevou") {
         const choice = RANTEVOU[body.choice];
         if (!choice) return json({ ok: false, error: "Λάθος επιλογή" }, 400);
+        const [hFrom, hTo] = RANTEVOU_HOURS[body.choice];
+        if (time < hFrom || time > hTo) return json({ ok: false, error: `Διάλεξε ώρα ${hFrom}–${hTo}` }, 400);
         title = `${body.change === true ? "🔁 ΑΛΛΑΓΗ · " : "💕 "}${name}${from ? ` (${from})` : ""} → ${choice} · ${niceDate(date)} ${time}`;
         lines = [`Όνομα: ${name}`];
         if (from) lines.push(`Από: ${from}`);
