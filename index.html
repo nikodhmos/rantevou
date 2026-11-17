@@ -238,7 +238,8 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 :root{ --pink:#ff7aa8; --pink2:#d94f86; }
 .hl.pink{color:var(--pink)}
 .btn.yes{--c:var(--pink2)}
-.place span.big{font-size:15px}
+.place span.big{font-size:clamp(9px, 2.8vw, 15px); white-space:nowrap}
+@media (max-width:350px){ .places{gap:10px; margin:24px 0 8px} .place{padding:16px 3px 12px} }
 .ok{font-family:'Press Start 2P',monospace; font-size:clamp(13px,4vw,17px); line-height:1.7; color:var(--pink2); margin:2px 0 6px}
 .heart-beat{animation:beat 1s steps(2) infinite}
 @keyframes beat{50%{transform:scale(1.12)}}
