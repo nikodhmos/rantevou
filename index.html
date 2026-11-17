@@ -236,6 +236,14 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
   box-shadow:0 -3px 0 var(--ink), 0 3px 0 var(--ink), -3px 0 0 var(--ink), 3px 0 0 var(--ink), inset -3px -3px 0 #d9c99e}
 .dsel select.on{background:var(--gold)}
 .confirm{margin-top:6px; text-align:center}
+.sec{text-align:left; margin:18px 0 6px; padding:14px 14px 16px; background:rgba(255,255,255,.45);
+  box-shadow:0 -3px 0 #e4d3a8, 0 3px 0 #e4d3a8, -3px 0 0 #e4d3a8, 3px 0 0 #e4d3a8}
+.sec h3{font-family:'Press Start 2P',monospace; font-size:13px; line-height:1.6; color:var(--pink2); margin:0 0 4px; display:flex; align-items:center; gap:10px}
+.sec h3 small{font-family:'Tiny5',monospace; font-size:15px; color:#7a6a8a}
+.sec .num{display:inline-grid; place-items:center; width:28px; height:28px; background:var(--pink2); color:#fff; font-size:12px; flex:none;
+  box-shadow:0 -2px 0 var(--ink), 0 2px 0 var(--ink), -2px 0 0 var(--ink), 2px 0 0 var(--ink)}
+.sec label:first-of-type{margin-top:8px}
+.sec textarea{margin-top:10px; width:100%}
 .confirm .cq{font-size:24px; margin:10px 0 0}
 #changeMind{color:var(--pink2)}
 .tsel{display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 4px}
@@ -288,39 +296,47 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 
   <!-- 3. Πότε -->
   <section class="screen" id="s-when">
-    <p class="ok">Ωραία, άσ' το πάνω μου 😎</p>
-    <h2>Πότε;</h2>
-    <p class="sub"><b id="placeLabel"></b> · <a href="#" id="changePlace">αλλαγή</a></p>
+    <div id="whenHead">
+      <p class="ok">Ωραία, άσ' το πάνω μου 😎</p>
+      <p class="sub"><b id="placeLabel"></b> · <a href="#" id="changePlace">αλλαγή</a></p>
+    </div>
     <form id="form" novalidate>
-      <label>Μέρα</label>
-      <div class="chips" id="dateChips"></div>
-      <div class="dsel"><select id="dSel" aria-label="Άλλη μέρα"></select></div>
-      <input type="hidden" id="date" value="">
-      <label>Ώρα <small>(πάτα πάνω για άλλη ώρα)</small></label>
-      <div class="tsel">
-        <select id="hSel" aria-label="Ώρα"></select>
-        <span class="colon">:</span>
-        <select id="mSel" aria-label="Λεπτά"></select>
+      <div class="sec">
+        <h3><span class="num">1</span> Πες μου για σένα</h3>
+        <label>Όνομα
+          <input id="name" maxlength="40" placeholder="πώς σε λένε;" autocomplete="given-name" enterkeyhint="next">
+        </label>
+        <label>Από πού είσαι;
+          <input id="from" maxlength="40" placeholder="π.χ. Θεσσαλονίκη" autocomplete="address-level2" enterkeyhint="next">
+        </label>
       </div>
-      <input type="hidden" id="time" value="21:00">
-      <div class="chips" id="timeChips"></div>
-      <p class="err soft" id="timeNote"></p>
-      <label>Όνομα
-        <input id="name" maxlength="40" placeholder="πώς σε λένε;" autocomplete="given-name" enterkeyhint="next">
-      </label>
-      <label>Από πού είσαι;
-        <input id="from" maxlength="40" placeholder="π.χ. Θεσσαλονίκη" autocomplete="address-level2" enterkeyhint="next">
-      </label>
-      <label>Κάτι άλλο; <small>(προαιρετικό)</small>
-        <textarea id="msg" rows="2" maxlength="300" placeholder="π.χ. θέλω λαδόκολλα 🥙"></textarea>
-      </label>
+      <div class="sec">
+        <h3><span class="num">2</span> Πότε;</h3>
+        <label>Μέρα</label>
+        <div class="chips" id="dateChips"></div>
+        <div class="dsel"><select id="dSel" aria-label="Άλλη μέρα"></select></div>
+        <input type="hidden" id="date" value="">
+        <label>Ώρα <small>(πάτα πάνω για άλλη ώρα)</small></label>
+        <div class="tsel">
+          <select id="hSel" aria-label="Ώρα"></select>
+          <span class="colon">:</span>
+          <select id="mSel" aria-label="Λεπτά"></select>
+        </div>
+        <input type="hidden" id="time" value="21:00">
+        <div class="chips" id="timeChips"></div>
+        <p class="err soft" id="timeNote"></p>
+      </div>
+      <div class="sec">
+        <h3><span class="num">3</span> Κάτι άλλο; <small>(προαιρετικό)</small></h3>
+        <textarea id="msg" rows="2" maxlength="300" placeholder="π.χ. θέλω λαδόκολλα 🥙" aria-label="Κάτι άλλο"></textarea>
+      </div>
       <button class="btn wide yes" type="submit" id="send">ΚΛΕΙΣΤΗΚΕ 💌</button>
       <p class="err" id="err"></p>
     </form>
     <div class="confirm hidden" id="confirm">
-      <p class="ok">Άρα...</p>
+      <h2>Τα κλείνουμε; 💌</h2>
+      <p class="sub">δες αν είναι όλα σωστά</p>
       <div class="summary" id="confirmSum"></div>
-      <p class="cq">σωστά;</p>
       <div class="btns">
         <button class="btn yes" type="button" id="confirmYes">ΝΑΙ, ΣΤΕΙΛ' ΤΟ 💌</button>
         <button class="btn ghost small" type="button" id="confirmNo">✏️ ΑΛΛΑΓΗ</button>
@@ -843,8 +859,8 @@ $("form").addEventListener("submit", async e => {
   err.textContent = "";
   pending = d;
   fillSummary($("confirmSum"), d);
-  $("form").classList.add("hidden"); $("confirm").classList.remove("hidden");
-  $("confirm").scrollIntoView({ behavior: "smooth", block: "center" });
+  $("form").classList.add("hidden"); $("whenHead").classList.add("hidden"); $("confirm").classList.remove("hidden");
+  scrollTo({ top: 0, behavior: "smooth" });
   beep(880, .06); buzz(15);
 });
 
@@ -857,11 +873,11 @@ function fillSummary(sm, d) {
   });
 }
 $("confirmNo").onclick = () => {
-  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); beep(400, .06);
+  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); $("whenHead").classList.remove("hidden"); beep(400, .06);
 };
 $("changeMind").onclick = e => {
   e.preventDefault();
-  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden");
+  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); $("whenHead").classList.remove("hidden");
   $("send").textContent = "ΣΤΕΙΛΕ ΤΗΝ ΑΛΛΑΓΗ 💌";
   show("s-when");
 };
@@ -890,7 +906,7 @@ $("confirmYes").onclick = async () => {
 
   fillSummary($("summary"), d);
   if (!/δεν στάλθηκε/.test(note)) sentOnce = true;
-  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden");
+  $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); $("whenHead").classList.remove("hidden");
   $("doneNote").textContent = note;
   $("cal").href = calLink(d);
   const sms = $("sms");
