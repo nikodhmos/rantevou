@@ -660,7 +660,7 @@ const dateIn = $("date"), timeIn = $("time");
 const today = new Date(); today.setHours(0, 0, 0, 0);
 dateIn.min = iso(today);
 
-const dateOpts = [["Απόψε", 0], ["Αύριο", 1]];
+const dateOpts = [["Σήμερα", 0], ["Αύριο", 1]];
 [[5, "Παρασκευή"], [6, "Σάββατο"], [0, "Κυριακή"]].forEach(([dow, label]) => {
   const off = (dow - today.getDay() + 7) % 7;
   if (off > 1) dateOpts.push([label, off]);
@@ -682,7 +682,7 @@ const LAST = 23 * 60 + 55;
 function minAllowed() {
   if (dateIn.value !== iso(new Date())) return 0;
   const n = new Date();
-  return Math.ceil((n.getHours() * 60 + n.getMinutes() + 1) / 5) * 5;
+  return Math.ceil((n.getHours() * 60 + n.getMinutes()) / 5) * 5;   // από τώρα (στρογγυλεμένο στο 5λεπτο)
 }
 function setTime(t) {
   const lo = minAllowed();
@@ -709,7 +709,7 @@ function syncChips() {
     c.classList.toggle("on", c.dataset.v === timeIn.value);
     c.disabled = toMin(c.dataset.v) < lo;
   });
-  $("timeNote").textContent = lo > 0 ? (lo > LAST ? "Για απόψε είναι αργά, διάλεξε άλλη μέρα 🙂" : `Για σήμερα: από ${fromMin(lo)} και μετά`) : "";
+  $("timeNote").textContent = lo > 0 ? (lo > LAST ? "Για σήμερα είναι αργά, διάλεξε άλλη μέρα 🙂" : `Για σήμερα: από ${fromMin(lo)} και μετά`) : "";
 }
 ["input", "change"].forEach(ev => dateIn.addEventListener(ev, () => setTime(toMin(timeIn.value))));
 syncChips();
