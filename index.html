@@ -269,6 +269,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
 #timeChips,#minChips{justify-content:center}
 .chip:disabled{opacity:.35; cursor:not-allowed}
 .err.soft{color:#7a6a8a; min-height:0}
+.btn.wide{white-space:normal; line-height:1.6; overflow-wrap:anywhere}
 .dsel{display:flex; justify-content:center; margin:12px 4px 0}
 .dsel select{font-family:inherit; font-size:20px; color:var(--ink); background:#f3e6c4; border:0; border-radius:0;
   padding:10px 14px; width:100%; -webkit-appearance:none; appearance:none; cursor:pointer;
@@ -998,7 +999,7 @@ $("confirmNo").onclick = () => {
 $("changeMind").onclick = e => {
   e.preventDefault();
   $("confirm").classList.add("hidden"); $("form").classList.remove("hidden"); $("whenHead").classList.remove("hidden");
-  $("send").textContent = "ΣΤΕΙΛΕ ΤΗΝ ΑΛΛΑΓΗ 💌";
+  $("send").textContent = "ΣΤΕΙΛΕ ΑΛΛΑΓΗ 💌";
   show("s-when");
 };
 $("confirmYes").onclick = async () => {
@@ -1174,7 +1175,7 @@ function prefill(a) {
   $("placeLabel").textContent = `${ch.emoji} ${ch.name}`;
   $("name").value = a.name || ""; $("from").value = a.from || ""; $("msg").value = a.msg || "";
   dateIn.value = a.date; timeIn.value = a.time; setTime(toMin(a.time));
-  sentOnce = true; $("send").textContent = "ΣΤΕΙΛΕ ΤΗΝ ΑΛΛΑΓΗ 💌";
+  sentOnce = true; $("send").textContent = "ΣΤΕΙΛΕ ΑΛΛΑΓΗ 💌";
 }
 $("againChange").onclick = () => { const a = store.get(); if (!a) return; unlockAudio(); prefill(a); show("s-when"); };
 $("againIntro").onclick = () => { clearInterval(cdTimer); show("s-intro"); };
