@@ -391,7 +391,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
     <div class="summary" id="summary"></div>
     <p class="note" id="doneNote"></p>
     <div class="btns">
-      <button class="btn gold small" type="button" id="ticketBtn">🎟️ ΚΡΑΤΑ ΤΟ ΕΙΣΙΤΗΡΙΟ</button>
+      <button class="btn gold small" type="button" id="ticketBtn">⬇️ ΚΑΤΕΒΑΣΕ ΤΟ ΕΙΣΙΤΗΡΙΟ</button>
       <a class="btn blue small" id="cal" target="_blank" rel="noopener">📅 ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ</a>
     </div>
     <p class="note"><button type="button" class="linkbtn" id="changeMind">↺ άλλαξα γνώμη</button></p>
@@ -403,7 +403,7 @@ footer{margin-top:26px; font-size:17px; color:#b9b3d9; text-align:center}
     <div class="countdown" id="countdown"></div>
     <div class="summary" id="againSum"></div>
     <div class="btns">
-      <button class="btn gold small" type="button" id="againTicket">🎟️ ΤΟ ΕΙΣΙΤΗΡΙΟ</button>
+      <button class="btn gold small" type="button" id="againTicket">⬇️ ΤΟ ΕΙΣΙΤΗΡΙΟ</button>
     </div>
     <p class="note"><button type="button" class="linkbtn" id="againChange">↺ άλλαξα γνώμη</button> · <button type="button" class="linkbtn" id="againIntro">δες ξανά την πρόσκληση</button></p>
   </section>
@@ -1069,13 +1069,11 @@ async function shareTicket(a, btn) {
     const c = await makeTicket(a);
     const blob = await new Promise(r => c.toBlob(r, "image/png"));
     const file = new File([blob], "rantevou-eisitirio.png", { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "Το εισιτήριο του ραντεβού μας 💕" }); } catch (e) {}
-    } else {
-      const url = URL.createObjectURL(blob), l = document.createElement("a");
-      l.href = url; l.download = file.name; document.body.appendChild(l); l.click(); l.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-    }
+    // μόνο κατέβασμα (όχι μενού κοινοποίησης)
+    const url = URL.createObjectURL(blob), l = document.createElement("a");
+    l.href = url; l.download = file.name; document.body.appendChild(l); l.click(); l.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    alertNote(btn, "κατέβηκε ✓");
   } catch (e) { alertNote(btn, "δεν έγινε 😬"); }
   btn.disabled = false; btn.textContent = old;
 }
